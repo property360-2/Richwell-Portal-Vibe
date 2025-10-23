@@ -2,7 +2,7 @@
 
 ---
 
-## **Phase 0: Planning & Requirements Gathering**
+## **Phase 0: Planning & Requirements Gathering** Done
 
 **Goal:** Define system scope and rules before coding.
 
@@ -27,7 +27,7 @@
 
 ---
 
-## **Phase 1: Local Development Setup**
+## **Phase 1: Local Development Setup** 
 
 **Goal:** Prepare dev environment and project structure.
 
