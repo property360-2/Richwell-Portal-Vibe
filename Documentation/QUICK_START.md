@@ -283,8 +283,8 @@ npm i axios react-router-dom lucide-react recharts && npm i -D tailwindcss postc
 echo "Node: $(node -v)"
 echo "NPM: $(npm -v)"
 echo "MySQL: $(mysql --version)"
-echo "Backend running: $(curl -s http://localhost:5000/api/health | grep success && echo '✅' || echo '❌')"
-echo "Frontend running: $(curl -s http://localhost:3000 && echo '✅' || echo '❌')"
+echo "Backend running: $(curl -s http://localhost:5173 | grep success && echo '✅' || echo '❌')"
+echo "Frontend running: $(curl -s http://localhost:5173 && echo '✅' || echo '❌')"
 ```
 
 ---

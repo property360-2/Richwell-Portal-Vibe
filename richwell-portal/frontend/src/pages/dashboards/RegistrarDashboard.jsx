@@ -1,3 +1,5 @@
+import DashboardLayout from "../../components/layout/DashboardLayout";
+import Card from "../../components/common/Card";
 // frontend/src/pages/dashboards/RegistrarDashboard.jsx
  const RegistrarDashboard = () => {
   return (
