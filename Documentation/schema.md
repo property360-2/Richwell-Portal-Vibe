@@ -114,17 +114,18 @@ We’ll divide it by function to keep things clean.
 
 ### 🧩 `subjects`
 
-| Column            | Type                                       | Description                   |
-| ----------------- | ------------------------------------------ | ----------------------------- |
-| `subject_id`      | INT (PK)                                   |                               |
-| `code`            | VARCHAR(20)                                | e.g., “AOOP101”               |
-| `name`            | VARCHAR(100)                               |                               |
-| `units`           | INT                                        |                               |
-| `subject_type`    | ENUM('major','minor')                      |                               |
-| `year_standing`   | ENUM('1st','2nd','3rd','4th') **NULLABLE** | If null → no year restriction |
-| `program_id`      | INT (FK → programs.program_id)             |                               |
-| `prerequisite_id` | INT NULL (FK → subjects.subject_id)        |                               |
-
+| Column                 | Type                                       | Description                                  |
+| ---------------------- | ------------------------------------------ | -------------------------------------------- |
+| `subject_id`           | INT (PK)                                   |                                              |
+| `code`                 | VARCHAR(20)                                | e.g., “AOOP101”                              |
+| `name`                 | VARCHAR(100)                               |                                              |
+| `units`                | INT                                        |                                              |
+| `subject_type`         | ENUM('major','minor')                      |                                              |
+| `year_standing`        | ENUM('1st','2nd','3rd','4th') **NULLABLE** | If null → no year restriction                |
+| `recommended_year`     | ENUM('1st','2nd','3rd','4th') **NULLABLE** | The year this subject is recommended for     |
+| `recommended_semester` | ENUM('1st','2nd','summer') **NULLABLE**    | The semester this subject is recommended for |
+| `program_id`           | INT (FK → programs.program_id)             |                                              |
+| `prerequisite_id`      | INT NULL (FK → subjects.subject_id)        |                                              |
 
 ---
 

@@ -34,6 +34,12 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Import routes
+import authRoutes from './routes/authRoutes.js';
+
+// API routes
+app.use('/api/auth', authRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 

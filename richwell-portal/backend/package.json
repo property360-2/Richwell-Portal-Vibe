@@ -4,14 +4,22 @@
   "description": "Backend for Richwell College Portal",
   "type": "module",
   "main": "src/server.js",
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
-    "prisma:studio": "npx prisma studio"
+    "prisma:studio": "npx prisma studio",
+    "seed": "node prisma/seed.js"
   },
-  "keywords": ["education", "school", "portal"],
+  "keywords": [
+    "education",
+    "school",
+    "portal"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
