@@ -34,6 +34,7 @@ const AcademicTermsPage = () => {
       setLoading(true);
       const response = await apiService.get('/academic-terms');
       setTerms(response.data.data);
+    // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setAlert({
         type: 'error',
