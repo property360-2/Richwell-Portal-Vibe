@@ -36,9 +36,17 @@ app.get('/api/test', (req, res) => {
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import programRoutes from './routes/programRoutes.js';
+import subjectRoutes from './routes/subjectRoutes.js';
+import sectionRoutes from './routes/sectionRoutes.js';
+import academicTermRoutes from './routes/academicTermRoutes.js';
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/programs', programRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/academic-terms', academicTermRoutes);
 
 // 404 handler
 app.use((req, res) => {
