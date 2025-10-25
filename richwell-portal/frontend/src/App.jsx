@@ -1,3 +1,4 @@
+
 // frontend/src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -15,6 +16,12 @@ import RegistrarDashboard from './pages/dashboards/RegistrarDashboard';
 import AdmissionDashboard from './pages/dashboards/AdmissionDashboard';
 import DeanDashboard from './pages/dashboards/DeanDashboard';
 
+// Admin Pages (Phase 3)
+import ProgramsPage from './pages/admin/ProgramsPage';
+import SubjectsPage from './pages/admin/SubjectsPage';
+import SectionsPage from './pages/admin/SectionsPage';
+import AcademicTermsPage from './pages/admin/AcademicTermsPage';
+
 function App() {
   return (
     <Router>
@@ -24,7 +31,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/setup-password" element={<PasswordSetup />} />
 
-          {/* Protected Routes - Student */}
+          {/* Student Routes */}
           <Route
             path="/student/dashboard"
             element={
@@ -34,7 +41,7 @@ function App() {
             }
           />
 
-          {/* Protected Routes - Professor */}
+          {/* Professor Routes */}
           <Route
             path="/professor/dashboard"
             element={
@@ -44,7 +51,7 @@ function App() {
             }
           />
 
-          {/* Protected Routes - Registrar */}
+          {/* Registrar Routes */}
           <Route
             path="/registrar/dashboard"
             element={
@@ -53,8 +60,40 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/registrar/programs"
+            element={
+              <ProtectedRoute allowedRoles={['registrar', 'dean']}>
+                <ProgramsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/registrar/subjects"
+            element={
+              <ProtectedRoute allowedRoles={['registrar', 'dean']}>
+                <SubjectsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/registrar/sections"
+            element={
+              <ProtectedRoute allowedRoles={['registrar', 'dean']}>
+                <SectionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/registrar/terms"
+            element={
+              <ProtectedRoute allowedRoles={['registrar', 'dean']}>
+                <AcademicTermsPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Protected Routes - Admission */}
+          {/* Admission Routes */}
           <Route
             path="/admission/dashboard"
             element={
@@ -64,7 +103,7 @@ function App() {
             }
           />
 
-          {/* Protected Routes - Dean */}
+          {/* Dean Routes */}
           <Route
             path="/dean/dashboard"
             element={
@@ -73,11 +112,41 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/dean/programs"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <ProgramsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/subjects"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <SubjectsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/sections"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <SectionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/terms"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <AcademicTermsPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Default Route */}
+          {/* Default Routes */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-
-          {/* 404 Route */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

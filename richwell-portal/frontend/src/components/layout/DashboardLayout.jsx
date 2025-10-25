@@ -1,6 +1,7 @@
+
 // frontend/src/components/layout/DashboardLayout.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Menu, 
@@ -12,11 +13,14 @@ import {
   BookOpen,
   Users,
   FileText,
-  BarChart3
+  BarChart3,
+  Calendar,
+  BookMarked
 } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -46,7 +50,10 @@ const DashboardLayout = ({ children }) => {
       registrar: [
         { icon: Home, label: 'Dashboard', path: '/registrar/dashboard' },
         { icon: Users, label: 'Students', path: '/registrar/students' },
-        { icon: BookOpen, label: 'Sections', path: '/registrar/sections' },
+        { icon: BookMarked, label: 'Programs', path: '/registrar/programs' },
+        { icon: BookOpen, label: 'Subjects', path: '/registrar/subjects' },
+        { icon: Users, label: 'Sections', path: '/registrar/sections' },
+        { icon: Calendar, label: 'Academic Terms', path: '/registrar/terms' },
         { icon: FileText, label: 'Grades Approval', path: '/registrar/grades' },
         { icon: BarChart3, label: 'Reports', path: '/registrar/reports' }
       ],
@@ -58,9 +65,11 @@ const DashboardLayout = ({ children }) => {
       ],
       dean: [
         { icon: Home, label: 'Dashboard', path: '/dean/dashboard' },
-        { icon: Users, label: 'Professors', path: '/dean/professors' },
+        { icon: BookMarked, label: 'Programs', path: '/dean/programs' },
         { icon: BookOpen, label: 'Subjects', path: '/dean/subjects' },
-        { icon: FileText, label: 'Programs', path: '/dean/programs' },
+        { icon: Users, label: 'Sections', path: '/dean/sections' },
+        { icon: Calendar, label: 'Academic Terms', path: '/dean/terms' },
+        { icon: Users, label: 'Professors', path: '/dean/professors' },
         { icon: BarChart3, label: 'Reports', path: '/dean/reports' }
       ]
     };
@@ -164,7 +173,7 @@ const DashboardLayout = ({ children }) => {
           <ul className="space-y-2">
             {navItems.map((item, index) => {
               const Icon = item.icon;
-              const isActive = window.location.pathname === item.path;
+              const isActive = location.pathname === item.path;
               
               return (
                 <li key={index}>
