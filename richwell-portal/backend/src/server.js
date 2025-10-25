@@ -40,6 +40,11 @@ import programRoutes from './routes/programRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import sectionRoutes from './routes/sectionRoutes.js';
 import academicTermRoutes from './routes/academicTermRoutes.js';
+import enrollmentRoutes from './routes/enrollmentRoutes.js';
+import gradeRoutes from './routes/gradeRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import incResolutionRoutes from './routes/incResolutionRoutes.js';
+import repeatEligibilityRoutes from './routes/repeatEligibilityRoutes.js';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -47,6 +52,11 @@ app.use('/api/programs', programRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/sections', sectionRoutes);
 app.use('/api/academic-terms', academicTermRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/grades', gradeRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/inc-resolutions', incResolutionRoutes);
+app.use('/api/repeat-eligibility', repeatEligibilityRoutes);
 
 // 404 handler
 app.use((req, res) => {

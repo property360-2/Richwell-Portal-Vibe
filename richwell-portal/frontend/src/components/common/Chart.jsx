@@ -1,101 +1,76 @@
 // frontend/src/components/common/Chart.jsx
 import React from 'react';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
   Tooltip,
   Legend,
-  ResponsiveContainer
-} from 'recharts';
+  ArcElement,
+  PointElement,
+  LineElement
+} from 'chart.js';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+);
 
 const Chart = ({ 
+  title, 
   type = 'bar', 
-  data = [], 
-  xKey, 
-  yKey, 
-  title,
-  colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
-  height = 300
+  data, 
+  options = {}, 
+  className = '',
+  height = 300 
 }) => {
+  const defaultOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: false,
+      },
+    },
+    ...options
+  };
+
   const renderChart = () => {
     switch (type) {
-      case 'bar':
-        return (
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xKey} />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey={yKey} fill={colors[0]} />
-          </BarChart>
-        );
-
+      case 'doughnut':
+        return <Doughnut data={data} options={defaultOptions} />;
       case 'line':
-        return (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xKey} />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey={yKey} 
-              stroke={colors[0]} 
-              strokeWidth={2}
-            />
-          </LineChart>
-        );
-
-      case 'pie':
-        return (
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ name, percent }) => 
-                `${name}: ${(percent * 100).toFixed(0)}%`
-              }
-              outerRadius={100}
-              fill="#8884d8"
-              dataKey={yKey}
-            >
-              {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={colors[index % colors.length]} 
-                />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        );
-
+        return <Line data={data} options={defaultOptions} />;
+      case 'bar':
       default:
-        return <div className="text-gray-500">Chart type not supported</div>;
+        return <Bar data={data} options={defaultOptions} />;
     }
   };
 
   return (
-    <div className="w-full">
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
       {title && (
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        </div>
       )}
-      <ResponsiveContainer width="100%" height={height}>
+      <div className="p-6" style={{ height: `${height}px` }}>
         {renderChart()}
-      </ResponsiveContainer>
+      </div>
     </div>
   );
 };

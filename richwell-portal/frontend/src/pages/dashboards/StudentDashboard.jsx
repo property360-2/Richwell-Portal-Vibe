@@ -1,13 +1,45 @@
 // frontend/src/pages/dashboards/StudentDashboard.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { BookOpen, FileText, AlertCircle, Award } from 'lucide-react';
+import Chart from '../../components/common/Chart';
+import Alert from '../../components/common/Alert';
+import { BookOpen, FileText, AlertCircle, Award, TrendingUp, Users } from 'lucide-react';
+import { apiService } from '../../utils/api';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.get('/analytics/student');
+      setAnalytics(response.data.data);
+    } catch (error) {
+      setError('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -22,6 +54,13 @@ const StudentDashboard = () => {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <Alert type="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {/* Student Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
@@ -29,7 +68,7 @@ const StudentDashboard = () => {
               <div>
                 <p className="text-blue-100 text-sm">Student Number</p>
                 <p className="text-2xl font-bold mt-1">
-                  {user?.student?.studentNo || 'N/A'}
+                  {analytics?.student?.studentNo || 'N/A'}
                 </p>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -43,7 +82,7 @@ const StudentDashboard = () => {
               <div>
                 <p className="text-green-100 text-sm">Current GPA</p>
                 <p className="text-2xl font-bold mt-1">
-                  {user?.student?.gpa || '0.00'}
+                  {analytics?.statistics?.gpa?.toFixed(2) || '0.00'}
                 </p>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -55,9 +94,9 @@ const StudentDashboard = () => {
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">Year Level</p>
+                <p className="text-purple-100 text-sm">Total Subjects</p>
                 <p className="text-2xl font-bold mt-1">
-                  {user?.student?.yearLevel || 'N/A'}
+                  {analytics?.statistics?.totalSubjects || 0}
                 </p>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -67,7 +106,7 @@ const StudentDashboard = () => {
           </Card>
 
           <Card className={`bg-gradient-to-br ${
-            user?.student?.hasInc 
+            analytics?.statistics?.incCount > 0
               ? 'from-red-500 to-red-600' 
               : 'from-gray-500 to-gray-600'
           } text-white`}>
@@ -75,7 +114,7 @@ const StudentDashboard = () => {
               <div>
                 <p className="text-white text-opacity-80 text-sm">INC Grades</p>
                 <p className="text-2xl font-bold mt-1">
-                  {user?.student?.hasInc ? 'Yes' : 'None'}
+                  {analytics?.statistics?.incCount || 0}
                 </p>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -91,17 +130,56 @@ const StudentDashboard = () => {
             <div>
               <p className="text-sm text-gray-600">Program</p>
               <p className="text-lg font-semibold text-gray-900">
-                {user?.student?.program || 'Not Assigned'}
+                {analytics?.student?.program || 'Not Assigned'}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Status</p>
               <p className="text-lg font-semibold text-gray-900 capitalize">
-                {user?.student?.status || 'N/A'}
+                {analytics?.student?.status || 'N/A'}
               </p>
             </div>
           </div>
         </Card>
+
+        {/* Academic Performance Chart */}
+        {analytics?.enrollments && analytics.enrollments.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Chart
+              title="Academic Performance"
+              type="bar"
+              data={{
+                labels: analytics.enrollments.map(e => `${e.term.schoolYear} ${e.term.semester}`),
+                datasets: [{
+                  label: 'Units Enrolled',
+                  data: analytics.enrollments.map(e => e.totalUnits),
+                  backgroundColor: '#3B82F6',
+                  borderColor: '#1D4ED8',
+                  borderWidth: 1
+                }]
+              }}
+              height={300}
+            />
+            
+            <Chart
+              title="Grade Distribution"
+              type="doughnut"
+              data={{
+                labels: ['Passed', 'Failed', 'INC'],
+                datasets: [{
+                  data: [
+                    analytics.statistics.totalSubjects - analytics.statistics.incCount - analytics.statistics.failedCount,
+                    analytics.statistics.failedCount,
+                    analytics.statistics.incCount
+                  ],
+                  backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
+                  borderWidth: 0
+                }]
+              }}
+              height={300}
+            />
+          </div>
+        )}
 
         {/* Quick Actions */}
         <Card title="Quick Actions">

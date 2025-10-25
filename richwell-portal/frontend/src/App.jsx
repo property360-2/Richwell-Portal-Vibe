@@ -16,6 +16,16 @@ import RegistrarDashboard from './pages/dashboards/RegistrarDashboard';
 import AdmissionDashboard from './pages/dashboards/AdmissionDashboard';
 import DeanDashboard from './pages/dashboards/DeanDashboard';
 
+// Student Pages
+import EnrollmentPage from './pages/student/EnrollmentPage';
+import GradesPage from './pages/student/GradesPage';
+
+// Professor Pages
+import GradeEntryPage from './pages/professor/GradeEntryPage';
+
+// Registrar Pages
+import GradeApprovalPage from './pages/registrar/GradeApprovalPage';
+
 // Admin Pages (Phase 3)
 import ProgramsPage from './pages/admin/ProgramsPage';
 import SubjectsPage from './pages/admin/SubjectsPage';
@@ -40,6 +50,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/student/enrollment"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <EnrollmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/grades"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <GradesPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Professor Routes */}
           <Route
@@ -47,6 +73,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['professor']}>
                 <ProfessorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/professor/grades"
+            element={
+              <ProtectedRoute allowedRoles={['professor']}>
+                <GradeEntryPage />
               </ProtectedRoute>
             }
           />
@@ -89,6 +123,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['registrar', 'dean']}>
                 <AcademicTermsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/registrar/grades"
+            element={
+              <ProtectedRoute allowedRoles={['registrar']}>
+                <GradeApprovalPage />
               </ProtectedRoute>
             }
           />
