@@ -63,6 +63,15 @@ export const protect = async (req, res, next) => {
 
     // Attach user to request object
     req.user = user;
+    
+    // Add convenience properties for easier access
+    if (user.student) {
+      req.user.studentId = user.student.id;
+    }
+    if (user.professor) {
+      req.user.professorId = user.professor.id;
+    }
+    
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

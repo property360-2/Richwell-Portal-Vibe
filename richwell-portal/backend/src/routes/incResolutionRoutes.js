@@ -8,12 +8,12 @@ import {
   approveIncResolution,
   bulkApproveIncResolutions
 } from '../controllers/incResolutionController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(protect);
 
 // Student routes
 router.get('/student', getStudentIncSubjects);

@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await apiService.get('/auth/me');
-      setUser(response.data.user);
+      setUser(response.data.data.user);
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');

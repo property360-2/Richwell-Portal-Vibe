@@ -6,12 +6,12 @@ import {
   getRegistrarAnalytics,
   getDeanAnalytics
 } from '../controllers/analyticsController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(protect);
 
 // Role-based analytics routes
 router.get('/student', getStudentAnalytics);

@@ -7,12 +7,12 @@ import {
   approveGrade,
   bulkApproveGrades
 } from '../controllers/gradeController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(protect);
 
 // Professor routes
 router.get('/sections', getProfessorSections);

@@ -7,12 +7,12 @@ import {
   getEnrollmentHistory,
   cancelEnrollment
 } from '../controllers/enrollmentController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(protect);
 
 // Get available subjects for enrollment
 router.get('/available-subjects', getAvailableSubjects);

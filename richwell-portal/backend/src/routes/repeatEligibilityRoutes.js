@@ -5,12 +5,12 @@ import {
   getAllStudentsRepeatEligibility,
   updateRepeatEligibilityDate
 } from '../controllers/repeatEligibilityController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(protect);
 
 // Check repeat eligibility for specific student
 router.get('/:studentId', checkRepeatEligibility);

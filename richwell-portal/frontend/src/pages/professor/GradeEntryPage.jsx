@@ -281,7 +281,7 @@ const GradeEntryPage = () => {
                           <Dropdown
                             options={gradeOptions}
                             value={student.grade?.gradeValue || ''}
-                            onChange={(value) => handleGradeChange(student.id, value)}
+                            onChange={(e) => handleGradeChange(student.id, e.target.value)}
                             placeholder="Select Grade"
                             className="w-32"
                           />
