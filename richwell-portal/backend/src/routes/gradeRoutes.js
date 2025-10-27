@@ -7,7 +7,7 @@ import {
   approveGrade,
   bulkApproveGrades
 } from '../controllers/gradeController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -15,12 +15,12 @@ const router = express.Router();
 router.use(protect);
 
 // Professor routes
-router.get('/sections', getProfessorSections);
-router.put('/:enrollmentSubjectId', updateGrade);
+router.get('/sections', authorize('professor'), getProfessorSections);
+router.put('/:enrollmentSubjectId', authorize('professor'), updateGrade);
 
 // Registrar routes
-router.get('/pending-approval', getPendingGrades);
-router.put('/:gradeId/approve', approveGrade);
-router.put('/bulk-approve', bulkApproveGrades);
+router.get('/pending-approval', authorize('registrar'), getPendingGrades);
+router.put('/:gradeId/approve', authorize('registrar'), approveGrade);
+router.put('/bulk-approve', authorize('registrar'), bulkApproveGrades);
 
 export default router;
