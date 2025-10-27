@@ -48,11 +48,22 @@ const SectionsPage = () => {
 
   const fetchProfessors = async () => {
     try {
-      // This endpoint would need to be created
-      // For now, we'll use a placeholder
-      setProfessors([]);
+      const response = await apiService.getProfessors();
+      setProfessors(response.data.data || []);
     } catch (error) {
-      console.error('Failed to fetch professors');
+      setProfessors([]);
+      if (error.response?.status === 403) {
+        setAlert({
+          type: 'error',
+          message:
+            'Your role does not have permission to view professors. Please contact a dean for access.'
+        });
+      } else {
+        setAlert({
+          type: 'error',
+          message: 'Failed to fetch professors'
+        });
+      }
     }
   };
 

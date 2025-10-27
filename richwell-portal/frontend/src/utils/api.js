@@ -86,6 +86,10 @@ export const apiService = {
   updateSection: (id, data) => api.put(`/sections/${id}`, data),
   deleteSection: (id) => api.delete(`/sections/${id}`),
 
+  // Professors endpoints
+  getProfessors: () => api.get('/api/professors'),
+  getProfessor: (id) => api.get(`/api/professors/${id}`),
+
   // Academic Terms endpoints (Phase 3)
   getAcademicTerms: () => api.get('/academic-terms'),
   getActiveTerm: () => api.get('/academic-terms/active'),
