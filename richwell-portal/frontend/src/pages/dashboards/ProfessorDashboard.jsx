@@ -6,6 +6,8 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Table from '../../components/common/Table';
 import Alert from '../../components/common/Alert';
+import Chart from '../../components/common/Chart';
+import KpiCard from '../../components/common/KpiCard';
 import { apiService } from '../../utils/api';
 import { getProfessorSummary } from './dashboardMetrics';
 
@@ -25,7 +27,7 @@ const ProfessorDashboard = () => {
         setLoading(true);
         const response = await apiService.get('/analytics/professor');
         setAnalytics(response.data.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load professor analytics');
       } finally {
         setLoading(false);
@@ -78,11 +80,63 @@ const ProfessorDashboard = () => {
     }
   ]), []);
 
-  const gradeDistribution = useMemo(() =>
-    Object.entries(summary.gradeDistribution).map(([grade, count]) => ({
-      grade,
-      count
-    })), [summary]);
+  const gradeDistributionData = useMemo(() => {
+    const entries = Object.entries(summary.gradeDistribution ?? {});
+
+    if (entries.length === 0) {
+      return {
+        labels: ['No data'],
+        datasets: [
+          {
+            data: [0],
+            backgroundColor: ['#E5E7EB'],
+            borderWidth: 0
+          }
+        ]
+      };
+    }
+
+    const palette = ['#6366F1', '#22C55E', '#F97316', '#F43F5E', '#0EA5E9'];
+
+    return {
+      labels: entries.map(([grade]) => grade),
+      datasets: [
+        {
+          data: entries.map(([, value]) => value),
+          backgroundColor: entries.map((_, index) => palette[index % palette.length]),
+          borderWidth: 0
+        }
+      ]
+    };
+  }, [summary]);
+
+  const sectionEnrollmentData = useMemo(() => {
+    const sections = summary.sections ?? [];
+
+    if (sections.length === 0) {
+      return {
+        labels: ['No sections'],
+        datasets: [
+          {
+            label: 'Students',
+            data: [0],
+            backgroundColor: '#BFDBFE'
+          }
+        ]
+      };
+    }
+
+    return {
+      labels: sections.map(section => section.name ?? 'Unnamed'),
+      datasets: [
+        {
+          label: 'Students',
+          data: sections.map(section => section.studentCount ?? 0),
+          backgroundColor: '#6366F1'
+        }
+      ]
+    };
+  }, [summary]);
 
   if (loading) {
     return (
@@ -108,23 +162,9 @@ const ProfessorDashboard = () => {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {metricCards.map(card => (
-            <Card
-              key={card.title}
-              className={`bg-gradient-to-br ${card.gradient} text-white`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white text-opacity-80">{card.title}</p>
-                  <p className="text-3xl font-bold mt-2">{card.value}</p>
-                  <p className="text-xs text-white text-opacity-80 mt-2">{card.subtitle}</p>
-                </div>
-                <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                  {card.icon}
-                </div>
-              </div>
-            </Card>
+            <KpiCard key={card.title} {...card} />
           ))}
         </div>
 
@@ -145,29 +185,27 @@ const ProfessorDashboard = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card title="Section Overview">
-            <Table
-              columns={sectionColumns}
-              data={summary.sections}
-            />
-          </Card>
-
-          <Card title="Grade Distribution">
-            <div className="space-y-3">
-              {gradeDistribution.length === 0 ? (
-                <p className="text-sm text-gray-500">No grades recorded yet.</p>
-              ) : (
-                gradeDistribution.map(item => (
-                  <div key={item.grade} className="flex items-center justify-between">
-                    <span className="font-medium text-gray-700">{item.grade}</span>
-                    <span className="text-gray-600">{formatNumber(item.count)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Chart
+            title="Grade Distribution"
+            type="doughnut"
+            data={gradeDistributionData}
+            height={320}
+          />
+          <Chart
+            title="Section Enrollment"
+            type="bar"
+            data={sectionEnrollmentData}
+            height={320}
+          />
         </div>
+
+        <Card title="Section Overview">
+          <Table
+            columns={sectionColumns}
+            data={summary.sections}
+          />
+        </Card>
       </div>
     </DashboardLayout>
   );

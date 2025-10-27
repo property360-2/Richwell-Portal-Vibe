@@ -1,16 +1,15 @@
 // frontend/src/pages/dashboards/StudentDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Chart from '../../components/common/Chart';
 import Alert from '../../components/common/Alert';
-import { BookOpen, FileText, AlertCircle, Award, TrendingUp, Users } from 'lucide-react';
+import KpiCard from '../../components/common/KpiCard';
+import { BookOpen, FileText, AlertCircle, Award } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,7 +23,7 @@ const StudentDashboard = () => {
       setLoading(true);
       const response = await apiService.get('/analytics/student');
       setAnalytics(response.data.data);
-    } catch (error) {
+    } catch {
       setError('Failed to load analytics data');
     } finally {
       setLoading(false);
@@ -40,6 +39,48 @@ const StudentDashboard = () => {
       </DashboardLayout>
     );
   }
+
+  const gpaValue = analytics?.statistics?.gpa;
+
+  const metricCards = [
+    {
+      title: 'Student Number',
+      value: analytics?.student?.studentNo || 'N/A',
+      icon: <BookOpen size={24} />,
+      gradient: 'from-blue-500 to-blue-600',
+      valueClassName: 'text-2xl font-bold mt-1'
+    },
+    {
+      title: 'Current GPA',
+      value: typeof gpaValue === 'number' ? gpaValue.toFixed(2) : '0.00',
+      icon: <Award size={24} />,
+      gradient: 'from-green-500 to-green-600',
+      subtitle: 'Cumulative average',
+      valueClassName: 'text-2xl font-bold mt-1'
+    },
+    {
+      title: 'Total Subjects',
+      value: analytics?.statistics?.totalSubjects ?? 0,
+      icon: <FileText size={24} />,
+      gradient: 'from-purple-500 to-purple-600',
+      subtitle: 'Completed and in progress',
+      valueClassName: 'text-2xl font-bold mt-1'
+    },
+    {
+      title: 'INC Grades',
+      value: analytics?.statistics?.incCount ?? 0,
+      icon: <AlertCircle size={24} />,
+      gradient:
+        (analytics?.statistics?.incCount ?? 0) > 0
+          ? 'from-red-500 to-red-600'
+          : 'from-gray-500 to-gray-600',
+      subtitle:
+        (analytics?.statistics?.incCount ?? 0) > 0
+          ? 'Requires attention'
+          : 'All clear',
+      valueClassName: 'text-2xl font-bold mt-1'
+    }
+  ];
 
   return (
     <DashboardLayout>
@@ -62,66 +103,10 @@ const StudentDashboard = () => {
         )}
 
         {/* Student Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">Student Number</p>
-                <p className="text-2xl font-bold mt-1">
-                  {analytics?.student?.studentNo || 'N/A'}
-                </p>
-              </div>
-              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                <BookOpen size={24} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm">Current GPA</p>
-                <p className="text-2xl font-bold mt-1">
-                  {analytics?.statistics?.gpa?.toFixed(2) || '0.00'}
-                </p>
-              </div>
-              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                <Award size={24} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">Total Subjects</p>
-                <p className="text-2xl font-bold mt-1">
-                  {analytics?.statistics?.totalSubjects || 0}
-                </p>
-              </div>
-              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                <FileText size={24} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className={`bg-gradient-to-br ${
-            analytics?.statistics?.incCount > 0
-              ? 'from-red-500 to-red-600' 
-              : 'from-gray-500 to-gray-600'
-          } text-white`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white text-opacity-80 text-sm">INC Grades</p>
-                <p className="text-2xl font-bold mt-1">
-                  {analytics?.statistics?.incCount || 0}
-                </p>
-              </div>
-              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                <AlertCircle size={24} />
-              </div>
-            </div>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {metricCards.map(card => (
+            <KpiCard key={card.title} {...card} />
+          ))}
         </div>
 
         {/* Program Info */}

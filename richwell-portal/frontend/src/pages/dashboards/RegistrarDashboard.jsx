@@ -5,11 +5,18 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Table from '../../components/common/Table';
 import Alert from '../../components/common/Alert';
+import Chart from '../../components/common/Chart';
+import KpiCard from '../../components/common/KpiCard';
 import { apiService } from '../../utils/api';
 import { getRegistrarSummary } from './dashboardMetrics';
 
 const formatNumber = value =>
   typeof value === 'number' ? value.toLocaleString('en-US') : '0';
+
+const formatLabel = label =>
+  label
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, char => char.toUpperCase());
 
 const RegistrarDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
@@ -23,7 +30,7 @@ const RegistrarDashboard = () => {
         setLoading(true);
         const response = await apiService.get('/analytics/registrar');
         setAnalytics(response.data.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load registrar analytics');
       } finally {
         setLoading(false);
@@ -86,6 +93,70 @@ const RegistrarDashboard = () => {
     }
   ]), [summary]);
 
+  const enrollmentStatusData = useMemo(() => {
+    const entries = Object.entries(analytics?.enrollment ?? {}).filter(
+      ([, value]) => typeof value === 'number'
+    );
+
+    if (entries.length === 0) {
+      return {
+        labels: ['No data'],
+        datasets: [
+          {
+            label: 'Enrollments',
+            data: [0],
+            backgroundColor: ['#CBD5F5']
+          }
+        ]
+      };
+    }
+
+    const palette = ['#4F46E5', '#6366F1', '#22C55E', '#F97316', '#EC4899', '#0EA5E9'];
+
+    return {
+      labels: entries.map(([key]) => formatLabel(key)),
+      datasets: [
+        {
+          label: 'Enrollments',
+          data: entries.map(([, value]) => value),
+          backgroundColor: entries.map((_, index) => palette[index % palette.length])
+        }
+      ]
+    };
+  }, [analytics]);
+
+  const gradeWorkflowData = useMemo(() => {
+    const entries = Object.entries(analytics?.grades ?? {}).filter(
+      ([, value]) => typeof value === 'number'
+    );
+
+    if (entries.length === 0) {
+      return {
+        labels: ['No data'],
+        datasets: [
+          {
+            label: 'Grades',
+            data: [0],
+            backgroundColor: ['#F3F4F6']
+          }
+        ]
+      };
+    }
+
+    const palette = ['#10B981', '#F97316', '#F87171', '#6366F1'];
+
+    return {
+      labels: entries.map(([key]) => formatLabel(key)),
+      datasets: [
+        {
+          label: 'Grades',
+          data: entries.map(([, value]) => value),
+          backgroundColor: entries.map((_, index) => palette[index % palette.length])
+        }
+      ]
+    };
+  }, [analytics]);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -127,24 +198,25 @@ const RegistrarDashboard = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {metricCards.map(card => (
-            <Card
-              key={card.title}
-              className={`bg-gradient-to-br ${card.gradient} text-white`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white text-opacity-80">{card.title}</p>
-                  <p className="text-3xl font-bold mt-2">{card.value}</p>
-                  <p className="text-xs text-white text-opacity-80 mt-2">{card.subtitle}</p>
-                </div>
-                <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                  {card.icon}
-                </div>
-              </div>
-            </Card>
+            <KpiCard key={card.title} {...card} />
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Chart
+            title="Enrollment Status Overview"
+            type="bar"
+            data={enrollmentStatusData}
+            height={320}
+          />
+          <Chart
+            title="Grade Workflow"
+            type="doughnut"
+            data={gradeWorkflowData}
+            height={320}
+          />
         </div>
 
         <Card title="Program Enrollment Overview">
