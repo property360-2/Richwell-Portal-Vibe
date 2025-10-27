@@ -6,11 +6,12 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Alert from '../../components/common/Alert';
-import { BookOpen, CheckCircle, AlertCircle, Clock, Users } from 'lucide-react';
+import { BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const EnrollmentPage = () => {
   const { user } = useAuth();
+  const isStudent = user?.role === 'student';
   const [loading, setLoading] = useState(true);
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [recommendedSubjects, setRecommendedSubjects] = useState([]);
@@ -89,7 +90,7 @@ const EnrollmentPage = () => {
       setError(null);
       const sectionIds = selectedSubjects.map(s => s.sectionId);
       
-      const response = await apiService.post('/enrollments/enroll', {
+      await apiService.post('/enrollments/enroll', {
         sectionIds,
         totalUnits
       });
@@ -124,9 +125,13 @@ const EnrollmentPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Enrollment</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isStudent ? 'Enrollment' : 'Enrollment Management'}
+          </h1>
           <p className="text-gray-600 mt-1">
-            Select your subjects for the current semester
+            {isStudent
+              ? 'Select your subjects for the current semester'
+              : 'Assist students with their subject selection and submission'}
           </p>
         </div>
 
@@ -143,7 +148,7 @@ const EnrollmentPage = () => {
         )}
 
         {/* Enrollment Summary */}
-        <Card title="Enrollment Summary">
+        <Card title={isStudent ? 'Enrollment Summary' : 'Submission Summary'}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
@@ -168,7 +173,7 @@ const EnrollmentPage = () => {
 
         {/* Recommended Subjects */}
         {recommendedSubjects.length > 0 && (
-          <Card title="Recommended Subjects">
+          <Card title={isStudent ? 'Recommended Subjects' : 'Suggested Subjects'}>
             <div className="space-y-4">
               {recommendedSubjects.map((subject) => (
                 <div key={subject.id} className="border rounded-lg p-4">
@@ -182,7 +187,7 @@ const EnrollmentPage = () => {
                       </p>
                     </div>
                     <div className="text-sm text-blue-600 font-medium">
-                      Recommended
+                      {isStudent ? 'Recommended' : 'Suggested'}
                     </div>
                   </div>
                   
@@ -304,7 +309,7 @@ const EnrollmentPage = () => {
               className="px-8"
             >
               <BookOpen size={20} className="mr-2" />
-              Review & Enroll ({totalUnits} units)
+              {isStudent ? 'Review & Enroll' : 'Review & Submit'} ({totalUnits} units)
             </Button>
           </div>
         )}
@@ -313,16 +318,21 @@ const EnrollmentPage = () => {
         <Modal
           isOpen={showSummaryModal}
           onClose={() => setShowSummaryModal(false)}
-          title="Enrollment Summary"
+          title={isStudent ? 'Enrollment Summary' : 'Submission Summary'}
         >
           <div className="space-y-4">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900">
-                Review Your Enrollment
+                {isStudent ? 'Review Your Enrollment' : 'Review Student Enrollment'}
               </h3>
               <p className="text-gray-600">
                 Total: {selectedSubjects.length} subjects, {totalUnits} units
               </p>
+              {!isStudent && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Confirm with the student before submitting on their behalf.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -359,7 +369,7 @@ const EnrollmentPage = () => {
                 }}
                 className="flex-1"
               >
-                Continue to Oath
+                {isStudent ? 'Continue to Oath' : 'Continue to Confirmation'}
               </Button>
             </div>
           </div>
@@ -369,22 +379,31 @@ const EnrollmentPage = () => {
         <Modal
           isOpen={showOathModal}
           onClose={() => setShowOathModal(false)}
-          title="Student Oath"
+          title={isStudent ? 'Student Oath' : 'Enrollment Confirmation'}
         >
           <div className="space-y-4">
             <div className="text-center">
               <AlertCircle className="mx-auto text-yellow-500" size={48} />
               <h3 className="text-lg font-semibold text-gray-900 mt-2">
-                Student Oath
+                {isStudent ? 'Student Oath' : 'Confirm Enrollment'}
               </h3>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700">
-                I hereby declare that all information provided is true and correct. 
-                I understand that any false information may result in the cancellation 
-                of my enrollment and disciplinary action.
-              </p>
+              {isStudent ? (
+                <p className="text-sm text-gray-700">
+                  I hereby declare that all information provided is true and correct.
+                  I understand that any false information may result in the cancellation
+                  of my enrollment and disciplinary action.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-700">
+                  By submitting this enrollment, I confirm that the student has
+                  reviewed the information above and authorized this submission on
+                  their behalf. I acknowledge that any discrepancies should be
+                  resolved with the student before proceeding.
+                </p>
+              )}
             </div>
 
             <div className="flex space-x-3 pt-4">
@@ -399,7 +418,7 @@ const EnrollmentPage = () => {
                 onClick={handleEnroll}
                 className="flex-1"
               >
-                I Agree & Enroll
+                {isStudent ? 'I Agree & Enroll' : 'Submit Enrollment'}
               </Button>
             </div>
           </div>
