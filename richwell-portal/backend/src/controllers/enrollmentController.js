@@ -3,6 +3,32 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const STAFF_ROLES = ['admission', 'registrar'];
+
+const resolveStudentIdFromRequest = (req) => {
+  const roleName = req.user && req.user.role ? req.user.role.name : null;
+
+  if (roleName === 'student' && req.user.studentId) {
+    return req.user.studentId;
+  }
+
+  if (STAFF_ROLES.includes(roleName)) {
+    const studentIdSource =
+      (req.params && req.params.studentId) ||
+      (req.query && req.query.studentId) ||
+      (req.body && req.body.studentId);
+
+    if (!studentIdSource) {
+      return null;
+    }
+
+    const parsedId = parseInt(studentIdSource, 10);
+    return Number.isNaN(parsedId) ? null : parsedId;
+  }
+
+  return null;
+};
+
 /**
  * @desc    Get available subjects for enrollment
  * @route   GET /api/enrollments/available-subjects
@@ -10,7 +36,15 @@ const prisma = new PrismaClient();
  */
 export const getAvailableSubjects = async (req, res) => {
   try {
-    const { studentId } = req.user;
+    const studentId = resolveStudentIdFromRequest(req);
+    const isStaffView = req.user && req.user.role && STAFF_ROLES.includes(req.user.role.name);
+
+    if (!studentId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Student ID is required to get available subjects'
+      });
+    }
     const { termId } = req.query;
 
     // Get student info
@@ -146,18 +180,24 @@ export const getAvailableSubjects = async (req, res) => {
       availableSubjects.push(subject);
     }
 
+    const responsePayload = {
+      subjects: availableSubjects,
+      currentTerm,
+      student: {
+        id: student.id,
+        yearLevel: student.yearLevel,
+        program: student.program.name,
+        hasInc: student.hasInc
+      }
+    };
+
+    if (isStaffView) {
+      responsePayload.requestedBy = req.user.role.name;
+    }
+
     res.status(200).json({
       status: 'success',
-      data: {
-        subjects: availableSubjects,
-        currentTerm,
-        student: {
-          id: student.id,
-          yearLevel: student.yearLevel,
-          program: student.program.name,
-          hasInc: student.hasInc
-        }
-      }
+      data: responsePayload
     });
   } catch (error) {
     console.error('Get available subjects error:', error);
@@ -175,16 +215,37 @@ export const getAvailableSubjects = async (req, res) => {
  */
 export const getRecommendedSubjects = async (req, res) => {
   try {
-    const { studentId } = req.user;
+    const studentId = resolveStudentIdFromRequest(req);
+
+    if (!studentId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Student ID is required to get recommended subjects'
+      });
+    }
 
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: { program: true }
     });
 
+    if (!student) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Student not found'
+      });
+    }
+
     const currentTerm = await prisma.academicTerm.findFirst({
       where: { isActive: true }
     });
+
+    if (!currentTerm) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No active academic term found'
+      });
+    }
 
     // Get recommended subjects based on year level and semester
     const recommendedSubjects = await prisma.subject.findMany({
@@ -357,7 +418,14 @@ export const enrollStudent = async (req, res) => {
  */
 export const getEnrollmentHistory = async (req, res) => {
   try {
-    const { studentId } = req.user;
+    const studentId = resolveStudentIdFromRequest(req);
+
+    if (!studentId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Student ID is required to get enrollment history'
+      });
+    }
 
     const enrollments = await prisma.enrollment.findMany({
       where: { studentId: studentId },

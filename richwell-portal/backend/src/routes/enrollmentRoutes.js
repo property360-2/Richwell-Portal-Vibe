@@ -7,7 +7,7 @@ import {
   getEnrollmentHistory,
   cancelEnrollment
 } from '../controllers/enrollmentController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -15,18 +15,33 @@ const router = express.Router();
 router.use(protect);
 
 // Get available subjects for enrollment
-router.get('/available-subjects', getAvailableSubjects);
+router.get('/available-subjects', authorize('student'), getAvailableSubjects);
+router.get(
+  '/students/:studentId/available-subjects',
+  authorize('admission', 'registrar'),
+  getAvailableSubjects
+);
 
 // Get recommended subjects for student
-router.get('/recommended-subjects', getRecommendedSubjects);
+router.get('/recommended-subjects', authorize('student'), getRecommendedSubjects);
+router.get(
+  '/students/:studentId/recommended-subjects',
+  authorize('admission', 'registrar'),
+  getRecommendedSubjects
+);
 
 // Enroll student in subjects
-router.post('/enroll', enrollStudent);
+router.post('/enroll', authorize('student'), enrollStudent);
 
 // Get student's enrollment history
-router.get('/history', getEnrollmentHistory);
+router.get('/history', authorize('student'), getEnrollmentHistory);
+router.get(
+  '/students/:studentId/history',
+  authorize('admission', 'registrar'),
+  getEnrollmentHistory
+);
 
 // Cancel enrollment
-router.put('/:enrollmentId/cancel', cancelEnrollment);
+router.put('/:enrollmentId/cancel', authorize('student'), cancelEnrollment);
 
 export default router;
