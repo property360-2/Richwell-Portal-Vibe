@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  Menu, 
-  X, 
-  LogOut, 
-  User, 
+  Menu,
+  X,
+  LogOut,
+  User,
   Settings,
   Home,
   BookOpen,
@@ -15,7 +15,8 @@ import {
   FileText,
   BarChart3,
   Calendar,
-  BookMarked
+  BookMarked,
+  UserPlus
 } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
@@ -60,6 +61,7 @@ const DashboardLayout = ({ children }) => {
       admission: [
         { icon: Home, label: 'Dashboard', path: '/admission/dashboard' },
         { icon: Users, label: 'Applicants', path: '/admission/applicants' },
+        { icon: UserPlus, label: 'Student Onboarding', path: '/admission/onboarding' },
         { icon: BookOpen, label: 'Enrollment', path: '/student/enrollment' },
         { icon: BarChart3, label: 'Analytics', path: '/admission/analytics' }
       ],

@@ -46,6 +46,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import incResolutionRoutes from './routes/incResolutionRoutes.js';
 import repeatEligibilityRoutes from './routes/repeatEligibilityRoutes.js';
 import professorRoutes from './routes/professorRoutes.js';
+import admissionRoutes from './routes/admissionRoutes.js';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -59,6 +60,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/inc-resolutions', incResolutionRoutes);
 app.use('/api/repeat-eligibility', repeatEligibilityRoutes);
 app.use('/api/professors', professorRoutes);
+app.use('/api/admissions', admissionRoutes);
 
 // 404 handler
 app.use((req, res) => {

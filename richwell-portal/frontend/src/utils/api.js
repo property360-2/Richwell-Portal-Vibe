@@ -90,6 +90,9 @@ export const apiService = {
   getProfessors: () => api.get('/api/professors'),
   getProfessor: (id) => api.get(`/api/professors/${id}`),
 
+  // Admission endpoints
+  onboardStudent: (data) => api.post('/admissions/students', data),
+
   // Academic Terms endpoints (Phase 3)
   getAcademicTerms: () => api.get('/academic-terms'),
   getActiveTerm: () => api.get('/academic-terms/active'),

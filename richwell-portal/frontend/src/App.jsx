@@ -31,6 +31,7 @@ import ProgramsPage from './pages/admin/ProgramsPage';
 import SubjectsPage from './pages/admin/SubjectsPage';
 import SectionsPage from './pages/admin/SectionsPage';
 import AcademicTermsPage from './pages/admin/AcademicTermsPage';
+import StudentOnboardingPage from './pages/admission/StudentOnboardingPage';
 
 function App() {
   return (
@@ -141,6 +142,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admission']}>
                 <AdmissionDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admission/onboarding"
+            element={
+              <ProtectedRoute allowedRoles={['admission', 'registrar']}>
+                <StudentOnboardingPage />
               </ProtectedRoute>
             }
           />
