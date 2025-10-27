@@ -475,77 +475,65 @@ export const getAdmissionAnalytics = async (req, res) => {
     const startOfWindow = new Date(startOfDay);
     startOfWindow.setDate(startOfWindow.getDate() - 6);
 
-    const [
-      pendingEnrollments,
-      confirmedToday,
-      totalEnrollments,
-      confirmedEnrollments,
-      recentEnrollments,
-      enrollmentsLast7Days,
-      programEnrollments
-    ] = await Promise.all([
-      prisma.enrollment.count({
-        where: { status: 'pending' }
-      }),
-      prisma.enrollment.count({
-        where: {
-          status: 'confirmed',
-          dateEnrolled: {
-            gte: startOfDay,
-            lte: endOfDay
+    const enrollmentLogs = await prisma.analyticsLog.findMany({
+      where: { action: 'enrollment_status' },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    const parsedLogs = enrollmentLogs
+      .map((log) => {
+        try {
+          const payload = log.description ? JSON.parse(log.description) : {};
+          const enrollmentId = Number(payload.enrollmentId);
+
+          if (!enrollmentId || !payload.status) {
+            return null;
           }
-        }
-      }),
-      prisma.enrollment.count(),
-      prisma.enrollment.count({
-        where: { status: 'confirmed' }
-      }),
-      prisma.enrollment.findMany({
-        orderBy: { dateEnrolled: 'desc' },
-        take: 5,
-        include: {
-          student: {
-            select: {
-              studentNo: true,
-              program: { select: { name: true } },
-              user: { select: { email: true } }
-            }
-          },
-          term: true,
-          enrollmentSubjects: true
-        }
-      }),
-      prisma.enrollment.findMany({
-        where: {
-          status: 'confirmed',
-          dateEnrolled: {
-            gte: startOfWindow,
-            lte: endOfDay
-          }
-        },
-        select: {
-          dateEnrolled: true
-        }
-      }),
-      prisma.enrollment.findMany({
-        where: { status: 'confirmed' },
-        include: {
-          student: {
-            select: {
-              program: { select: { id: true, name: true } }
-            }
-          }
+
+          return {
+            enrollmentId,
+            status: payload.status,
+            termId: payload.termId ?? null,
+            studentId: payload.studentId ?? null,
+            source: payload.source ?? 'unknown',
+            metadata: payload.metadata ?? {},
+            timestamp: log.timestamp
+          };
+        } catch (parseError) {
+          console.warn('Skipping malformed enrollment analytics log:', parseError);
+          return null;
         }
       })
-    ]);
+      .filter(Boolean);
 
-    const confirmationRate = totalEnrollments > 0
-      ? (confirmedEnrollments / totalEnrollments) * 100
-      : 0;
+    const latestStatusByEnrollment = new Map();
+    parsedLogs.forEach((log) => {
+      const existing = latestStatusByEnrollment.get(log.enrollmentId);
+      if (!existing || existing.timestamp < log.timestamp) {
+        latestStatusByEnrollment.set(log.enrollmentId, log);
+      }
+    });
 
-    // Build 7-day enrollment trend
-    const dailyMap = enrollmentsLast7Days.reduce((acc, enrollment) => {
-      const key = enrollment.dateEnrolled.toISOString().slice(0, 10);
+    const totalEnrollments = latestStatusByEnrollment.size;
+    const pendingEnrollments = Array.from(latestStatusByEnrollment.values())
+      .filter((log) => log.status === 'pending').length;
+    const confirmedEnrollments = Array.from(latestStatusByEnrollment.values())
+      .filter((log) => log.status === 'confirmed').length;
+
+    const confirmedToday = parsedLogs.filter((log) =>
+      log.status === 'confirmed' &&
+      log.timestamp >= startOfDay &&
+      log.timestamp <= endOfDay
+    ).length;
+
+    const confirmedLogsLast7Days = parsedLogs.filter((log) =>
+      log.status === 'confirmed' &&
+      log.timestamp >= startOfWindow &&
+      log.timestamp <= endOfDay
+    );
+
+    const dailyMap = confirmedLogsLast7Days.reduce((acc, log) => {
+      const key = log.timestamp.toISOString().slice(0, 10);
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
@@ -561,7 +549,53 @@ export const getAdmissionAnalytics = async (req, res) => {
       };
     });
 
-    // Program distribution
+    const confirmedEnrollmentIds = Array.from(latestStatusByEnrollment.entries())
+      .filter(([, log]) => log.status === 'confirmed')
+      .map(([enrollmentId]) => enrollmentId);
+
+    const recentEnrollmentIds = [];
+    const seenRecent = new Set();
+    for (const log of parsedLogs) {
+      if (!seenRecent.has(log.enrollmentId)) {
+        seenRecent.add(log.enrollmentId);
+        recentEnrollmentIds.push(log.enrollmentId);
+      }
+      if (recentEnrollmentIds.length >= 5) {
+        break;
+      }
+    }
+
+    const [programEnrollments, recentEnrollments] = await Promise.all([
+      confirmedEnrollmentIds.length
+        ? prisma.enrollment.findMany({
+            where: { id: { in: confirmedEnrollmentIds } },
+            include: {
+              student: {
+                select: {
+                  program: { select: { id: true, name: true } }
+                }
+              }
+            }
+          })
+        : Promise.resolve([]),
+      recentEnrollmentIds.length
+        ? prisma.enrollment.findMany({
+            where: { id: { in: recentEnrollmentIds } },
+            include: {
+              student: {
+                select: {
+                  studentNo: true,
+                  program: { select: { name: true } },
+                  user: { select: { email: true } }
+                }
+              },
+              term: true,
+              enrollmentSubjects: true
+            }
+          })
+        : Promise.resolve([])
+    ]);
+
     const programDistributionMap = programEnrollments.reduce((acc, enrollment) => {
       const program = enrollment.student?.program;
       if (!program) return acc;
@@ -573,6 +607,39 @@ export const getAdmissionAnalytics = async (req, res) => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
+
+    const recentEnrollmentMap = recentEnrollments.reduce((acc, enrollment) => {
+      acc.set(enrollment.id, enrollment);
+      return acc;
+    }, new Map());
+
+    const recent = recentEnrollmentIds
+      .map((enrollmentId) => {
+        const enrollment = recentEnrollmentMap.get(enrollmentId);
+        const statusLog = latestStatusByEnrollment.get(enrollmentId);
+
+        if (!enrollment || !statusLog) {
+          return null;
+        }
+
+        return {
+          id: enrollment.id,
+          studentNo: enrollment.student?.studentNo,
+          studentEmail: enrollment.student?.user?.email,
+          program: enrollment.student?.program?.name,
+          status: statusLog.status,
+          totalUnits: enrollment.totalUnits,
+          subjects: enrollment.enrollmentSubjects.length,
+          term: `${enrollment.term.schoolYear} ${enrollment.term.semester}`,
+          dateEnrolled: enrollment.dateEnrolled,
+          lastStatusAt: statusLog.timestamp
+        };
+      })
+      .filter(Boolean);
+
+    const confirmationRate = totalEnrollments > 0
+      ? (confirmedEnrollments / totalEnrollments) * 100
+      : 0;
 
     res.status(200).json({
       status: 'success',
@@ -586,17 +653,7 @@ export const getAdmissionAnalytics = async (req, res) => {
         },
         trend: dailyTrend,
         programs: programDistribution,
-        recent: recentEnrollments.map(enrollment => ({
-          id: enrollment.id,
-          studentNo: enrollment.student?.studentNo,
-          studentEmail: enrollment.student?.user?.email,
-          program: enrollment.student?.program?.name,
-          status: enrollment.status,
-          totalUnits: enrollment.totalUnits,
-          subjects: enrollment.enrollmentSubjects.length,
-          term: `${enrollment.term.schoolYear} ${enrollment.term.semester}`,
-          dateEnrolled: enrollment.dateEnrolled
-        }))
+        recent
       }
     });
   } catch (error) {

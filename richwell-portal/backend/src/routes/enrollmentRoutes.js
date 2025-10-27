@@ -1,11 +1,12 @@
 // backend/src/routes/enrollmentRoutes.js
 import express from 'express';
-import { 
+import {
   getAvailableSubjects,
   getRecommendedSubjects,
   enrollStudent,
   getEnrollmentHistory,
-  cancelEnrollment
+  cancelEnrollment,
+  updateEnrollmentStatus
 } from '../controllers/enrollmentController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -39,6 +40,13 @@ router.get(
   '/students/:studentId/history',
   authorize('admission', 'registrar'),
   getEnrollmentHistory
+);
+
+// Update enrollment status (staff)
+router.put(
+  '/:enrollmentId/status',
+  authorize('admission', 'registrar'),
+  updateEnrollmentStatus
 );
 
 // Cancel enrollment

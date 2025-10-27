@@ -1,5 +1,6 @@
 // backend/src/controllers/enrollmentController.js
 import { PrismaClient } from '@prisma/client';
+import { recordEnrollmentStatusLog } from '../utils/analytics.js';
 
 const prisma = new PrismaClient();
 
@@ -393,6 +394,23 @@ export const enrollStudent = async (req, res) => {
       return { enrollment, enrollmentSubjects };
     });
 
+    try {
+      await recordEnrollmentStatusLog(prisma, {
+        userId: req.user.id,
+        enrollmentId: result.enrollment.id,
+        status: result.enrollment.status,
+        termId: currentTerm.id,
+        studentId,
+        source: 'self_service_enrollment',
+        metadata: {
+          totalUnits: result.enrollment.totalUnits,
+          sectionCount: result.enrollmentSubjects.length
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to record enrollment analytics log:', logError);
+    }
+
     res.status(201).json({
       status: 'success',
       message: 'Enrollment submitted successfully',
@@ -509,6 +527,23 @@ export const cancelEnrollment = async (req, res) => {
       }
     });
 
+    try {
+      await recordEnrollmentStatusLog(prisma, {
+        userId: req.user.id,
+        enrollmentId: enrollment.id,
+        status: 'cancelled',
+        termId: enrollment.termId,
+        studentId: enrollment.studentId,
+        source: 'self_service_enrollment',
+        metadata: {
+          reason: 'student_cancelled',
+          sectionCount: enrollment.enrollmentSubjects.length
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to record cancellation analytics log:', logError);
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Enrollment cancelled successfully'
@@ -518,6 +553,93 @@ export const cancelEnrollment = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to cancel enrollment'
+    });
+  }
+};
+
+/**
+ * @desc    Update enrollment status (staff action)
+ * @route   PUT /api/enrollments/:enrollmentId/status
+ * @access  Private (Admission, Registrar)
+ */
+export const updateEnrollmentStatus = async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const { status } = req.body;
+
+    const parsedEnrollmentId = parseInt(enrollmentId, 10);
+    const validStatuses = ['pending', 'confirmed', 'cancelled'];
+
+    if (Number.isNaN(parsedEnrollmentId)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid enrollment ID provided'
+      });
+    }
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid enrollment status provided'
+      });
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: parsedEnrollmentId }
+    });
+
+    if (!enrollment) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Enrollment not found'
+      });
+    }
+
+    if (enrollment.status === status) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Enrollment status is already up to date',
+        data: {
+          enrollmentId: enrollment.id,
+          status: enrollment.status
+        }
+      });
+    }
+
+    const updatedEnrollment = await prisma.enrollment.update({
+      where: { id: parsedEnrollmentId },
+      data: { status }
+    });
+
+    try {
+      await recordEnrollmentStatusLog(prisma, {
+        userId: req.user.id,
+        enrollmentId: parsedEnrollmentId,
+        status,
+        termId: enrollment.termId,
+        studentId: enrollment.studentId,
+        source: 'staff_action',
+        metadata: {
+          previousStatus: enrollment.status
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to record enrollment status analytics log:', logError);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Enrollment status updated to ${status}`,
+      data: {
+        enrollmentId: updatedEnrollment.id,
+        status: updatedEnrollment.status
+      }
+    });
+  } catch (error) {
+    console.error('Update enrollment status error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update enrollment status'
     });
   }
 };
