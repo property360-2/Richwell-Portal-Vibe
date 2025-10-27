@@ -60,7 +60,7 @@ const DashboardLayout = ({ children }) => {
       admission: [
         { icon: Home, label: 'Dashboard', path: '/admission/dashboard' },
         { icon: Users, label: 'Applicants', path: '/admission/applicants' },
-        { icon: BookOpen, label: 'Enrollment', path: '/admission/enrollment' },
+        { icon: BookOpen, label: 'Enrollment', path: '/student/enrollment' },
         { icon: BarChart3, label: 'Analytics', path: '/admission/analytics' }
       ],
       dean: [
