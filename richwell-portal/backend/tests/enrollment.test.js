@@ -11,12 +11,14 @@ describe('Enrollment API', () => {
   let termId;
   let subjectId;
   let sectionId;
+  let admissionToken;
 
   beforeEach(async () => {
     // Clean up test data
     await prisma.grade.deleteMany();
     await prisma.enrollmentSubject.deleteMany();
     await prisma.enrollment.deleteMany();
+    await prisma.analyticsLog.deleteMany();
     await prisma.section.deleteMany();
     await prisma.subject.deleteMany();
     await prisma.program.deleteMany();
@@ -31,11 +33,24 @@ describe('Enrollment API', () => {
       data: { name: 'student' }
     });
 
+    const admissionRole = await prisma.role.create({
+      data: { name: 'admission' }
+    });
+
     const user = await prisma.user.create({
       data: {
         email: 'student@example.com',
         password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         roleId: role.id,
+        status: 'active'
+      }
+    });
+
+    await prisma.user.create({
+      data: {
+        email: 'admission@example.com',
+        password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+        roleId: admissionRole.id,
         status: 'active'
       }
     });
@@ -122,6 +137,15 @@ describe('Enrollment API', () => {
     termId = term.id;
     subjectId = subject.id;
     sectionId = section.id;
+
+    const admissionLogin = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'admission@example.com',
+        password: 'password'
+      });
+
+    admissionToken = admissionLogin.body.token;
   });
 
   afterAll(async () => {
@@ -202,6 +226,47 @@ describe('Enrollment API', () => {
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('success');
       expect(response.body.data).toBeDefined();
+    });
+  });
+
+  describe('GET /api/analytics/admission', () => {
+    it('should reflect analytics changes after enrollment confirmation', async () => {
+      const enrollmentResponse = await request(app)
+        .post('/api/enrollments/enroll')
+        .set('Authorization', `Bearer ${studentToken}`)
+        .send({
+          sectionIds: [sectionId],
+          totalUnits: 3
+        });
+
+      const enrollmentId = enrollmentResponse.body.data.enrollmentId;
+
+      const initialAnalytics = await request(app)
+        .get('/api/analytics/admission')
+        .set('Authorization', `Bearer ${admissionToken}`);
+
+      expect(initialAnalytics.status).toBe(200);
+      expect(initialAnalytics.body.data.metrics.total).toBe(1);
+      expect(initialAnalytics.body.data.metrics.pending).toBe(1);
+      expect(initialAnalytics.body.data.metrics.confirmed).toBe(0);
+
+      const confirmationResponse = await request(app)
+        .put(`/api/enrollments/${enrollmentId}/status`)
+        .set('Authorization', `Bearer ${admissionToken}`)
+        .send({ status: 'confirmed' });
+
+      expect(confirmationResponse.status).toBe(200);
+
+      const postConfirmationAnalytics = await request(app)
+        .get('/api/analytics/admission')
+        .set('Authorization', `Bearer ${admissionToken}`);
+
+      expect(postConfirmationAnalytics.status).toBe(200);
+      expect(postConfirmationAnalytics.body.data.metrics.pending).toBe(0);
+      expect(postConfirmationAnalytics.body.data.metrics.confirmed).toBe(1);
+      expect(postConfirmationAnalytics.body.data.metrics.total).toBe(1);
+      expect(postConfirmationAnalytics.body.data.metrics.confirmationRate).toBeCloseTo(100);
+      expect(postConfirmationAnalytics.body.data.metrics.confirmedToday).toBeGreaterThanOrEqual(1);
     });
   });
 });
