@@ -9,8 +9,16 @@ const prisma = new PrismaClient();
  * @access  Private (Student)
  */
 export const getStudentAnalytics = async (req, res) => {
+  const studentId = req.user?.studentId;
+
+  if (!studentId) {
+    return res.status(403).json({
+      status: 'error',
+      message: 'Access denied. Student profile required.'
+    });
+  }
+
   try {
-    const { studentId } = req.user;
 
     // Get student info
     const student = await prisma.student.findUnique({
@@ -108,8 +116,16 @@ export const getStudentAnalytics = async (req, res) => {
  * @access  Private (Professor)
  */
 export const getProfessorAnalytics = async (req, res) => {
+  const professorId = req.user?.professorId;
+
+  if (!professorId) {
+    return res.status(403).json({
+      status: 'error',
+      message: 'Access denied. Professor profile required.'
+    });
+  }
+
   try {
-    const { professorId } = req.user;
 
     // Get current term
     const currentTerm = await prisma.academicTerm.findFirst({

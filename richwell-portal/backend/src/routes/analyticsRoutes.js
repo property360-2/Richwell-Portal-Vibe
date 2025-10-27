@@ -15,10 +15,10 @@ const router = express.Router();
 router.use(protect);
 
 // Role-based analytics routes
-router.get('/student', getStudentAnalytics);
-router.get('/professor', getProfessorAnalytics);
-router.get('/registrar', getRegistrarAnalytics);
-router.get('/dean', getDeanAnalytics);
+router.get('/student', authorize('student'), getStudentAnalytics);
+router.get('/professor', authorize('professor'), getProfessorAnalytics);
+router.get('/registrar', authorize('registrar'), getRegistrarAnalytics);
+router.get('/dean', authorize('dean'), getDeanAnalytics);
 router.get('/admission', authorize('admission', 'registrar', 'dean'), getAdmissionAnalytics);
 
 export default router;
