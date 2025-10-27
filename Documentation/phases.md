@@ -79,6 +79,7 @@
 3. **Sections CRUD** → assign professors, max slots, schedule.
 4. **Academic Terms CRUD** → create active semester/year.
 5. Test all CRUD operations on local server.
+6. Prepare baseline catalog rows as outlined in the [data seeding reference](./seeding.md).
 
 ---
 
