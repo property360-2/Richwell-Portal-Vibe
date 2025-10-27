@@ -131,6 +131,8 @@
 
 **Goal:** Role-based data visualization.
 
+**Status:** Admission analytics endpoint and dashboard connected.
+
 1. Backend APIs for summaries per role.
 2. Frontend reusable components:
 

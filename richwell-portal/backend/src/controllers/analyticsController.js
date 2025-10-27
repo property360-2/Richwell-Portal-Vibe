@@ -451,6 +451,164 @@ export const getDeanAnalytics = async (req, res) => {
 };
 
 /**
+ * @desc    Get admission analytics
+ * @route   GET /api/analytics/admission
+ * @access  Private (Admission, Registrar, Dean)
+ */
+export const getAdmissionAnalytics = async (req, res) => {
+  try {
+    const roleName = req.user?.role?.name;
+
+    if (!['admission', 'registrar', 'dean'].includes(roleName)) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Access denied. Admission role required.'
+      });
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const startOfWindow = new Date(startOfDay);
+    startOfWindow.setDate(startOfWindow.getDate() - 6);
+
+    const [
+      pendingEnrollments,
+      confirmedToday,
+      totalEnrollments,
+      confirmedEnrollments,
+      recentEnrollments,
+      enrollmentsLast7Days,
+      programEnrollments
+    ] = await Promise.all([
+      prisma.enrollment.count({
+        where: { status: 'pending' }
+      }),
+      prisma.enrollment.count({
+        where: {
+          status: 'confirmed',
+          dateEnrolled: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      }),
+      prisma.enrollment.count(),
+      prisma.enrollment.count({
+        where: { status: 'confirmed' }
+      }),
+      prisma.enrollment.findMany({
+        orderBy: { dateEnrolled: 'desc' },
+        take: 5,
+        include: {
+          student: {
+            select: {
+              studentNo: true,
+              program: { select: { name: true } },
+              user: { select: { email: true } }
+            }
+          },
+          term: true,
+          enrollmentSubjects: true
+        }
+      }),
+      prisma.enrollment.findMany({
+        where: {
+          status: 'confirmed',
+          dateEnrolled: {
+            gte: startOfWindow,
+            lte: endOfDay
+          }
+        },
+        select: {
+          dateEnrolled: true
+        }
+      }),
+      prisma.enrollment.findMany({
+        where: { status: 'confirmed' },
+        include: {
+          student: {
+            select: {
+              program: { select: { id: true, name: true } }
+            }
+          }
+        }
+      })
+    ]);
+
+    const confirmationRate = totalEnrollments > 0
+      ? (confirmedEnrollments / totalEnrollments) * 100
+      : 0;
+
+    // Build 7-day enrollment trend
+    const dailyMap = enrollmentsLast7Days.reduce((acc, enrollment) => {
+      const key = enrollment.dateEnrolled.toISOString().slice(0, 10);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dailyTrend = Array.from({ length: 7 }).map((_, index) => {
+      const day = new Date(startOfWindow);
+      day.setDate(startOfWindow.getDate() + index);
+      const key = day.toISOString().slice(0, 10);
+      return {
+        date: key,
+        label: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        count: dailyMap[key] || 0
+      };
+    });
+
+    // Program distribution
+    const programDistributionMap = programEnrollments.reduce((acc, enrollment) => {
+      const program = enrollment.student?.program;
+      if (!program) return acc;
+      acc[program.name] = (acc[program.name] || 0) + 1;
+      return acc;
+    }, {});
+
+    const programDistribution = Object.entries(programDistributionMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        metrics: {
+          pending: pendingEnrollments,
+          confirmedToday,
+          total: totalEnrollments,
+          confirmed: confirmedEnrollments,
+          confirmationRate
+        },
+        trend: dailyTrend,
+        programs: programDistribution,
+        recent: recentEnrollments.map(enrollment => ({
+          id: enrollment.id,
+          studentNo: enrollment.student?.studentNo,
+          studentEmail: enrollment.student?.user?.email,
+          program: enrollment.student?.program?.name,
+          status: enrollment.status,
+          totalUnits: enrollment.totalUnits,
+          subjects: enrollment.enrollmentSubjects.length,
+          term: `${enrollment.term.schoolYear} ${enrollment.term.semester}`,
+          dateEnrolled: enrollment.dateEnrolled
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get admission analytics error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get admission analytics'
+    });
+  }
+};
+
+/**
  * Helper function to get numeric grade
  */
 const getNumericGrade = (gradeValue) => {
