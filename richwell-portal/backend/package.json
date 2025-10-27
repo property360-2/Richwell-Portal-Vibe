@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "analytics:smoke": "node scripts/analyticsSmoke.js",
+    "postdeploy": "npm run analytics:smoke",
     "test": "jest --testPathPattern=tests --detectOpenHandles",
     "test:watch": "jest --testPathPattern=tests --watch --detectOpenHandles",
     "test:coverage": "jest --testPathPattern=tests --coverage --detectOpenHandles",

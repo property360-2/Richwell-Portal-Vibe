@@ -302,21 +302,169 @@ Body: {
 **Student Analytics Response:**
 ```javascript
 {
-  "student": {
-    "studentNo": "2024-0001",
-    "program": "BSCS",
-    "yearLevel": 1,
-    "gpa": 1.75,
-    "hasInc": false
-  },
-  "statistics": {
-    "totalSubjects": 15,
-    "totalUnits": 45,
-    "incCount": 0,
-    "failedCount": 1,
-    "gpa": 1.75
-  },
-  "enrollments": [...]
+  "status": "success",
+  "data": {
+    "student": {
+      "id": 1,
+      "studentNo": "2024-0001",
+      "program": "BSCS",
+      "yearLevel": 1,
+      "gpa": 1.75,
+      "hasInc": false,
+      "status": "active"
+    },
+    "statistics": {
+      "totalSubjects": 15,
+      "totalUnits": 45,
+      "incCount": 0,
+      "failedCount": 1,
+      "gpa": 1.75
+    },
+    "enrollments": [
+      /* latest 5 enrollments with term + subjects */
+    ]
+  }
+}
+```
+
+**Professor Analytics Response:**
+```javascript
+{
+  "status": "success",
+  "data": {
+    "professor": {
+      "id": 12,
+      "sections": 4,
+      "students": 120
+    },
+    "statistics": {
+      "totalSections": 4,
+      "totalStudents": 120,
+      "averageGrade": 2.1,
+      "incCount": 3,
+      "gradedStudents": 95
+    },
+    "gradeDistribution": {
+      "1.0": 2,
+      "1.25": 5,
+      "1.5": 10,
+      /* ... */
+      "INC": 3,
+      "DRP": 0
+    },
+    "sections": [
+      {
+        "id": 98,
+        "name": "CS101-A",
+        "subject": "Data Structures",
+        "studentCount": 30,
+        "gradedCount": 24
+      }
+    ]
+  }
+}
+```
+
+**Registrar Analytics Response:**
+```javascript
+{
+  "status": "success",
+  "data": {
+    "currentTerm": {
+      "schoolYear": "2024-2025",
+      "semester": "first"
+    },
+    "enrollment": {
+      "total": 420,
+      "confirmed": 380,
+      "pending": 40
+    },
+    "grades": {
+      "total": 820,
+      "approved": 600,
+      "pending": 220
+    },
+    "programs": [
+      {
+        "name": "BSCS",
+        "code": "BSCS",
+        "enrolledStudents": 210,
+        "totalStudents": 240
+      }
+    ]
+  }
+}
+```
+
+**Dean Analytics Response:**
+```javascript
+{
+  "status": "success",
+  "data": {
+    "currentTerm": {
+      "schoolYear": "2024-2025",
+      "semester": "first"
+    },
+    "professorLoad": [
+      {
+        "id": 12,
+        "name": "professor.analytics@richwell.edu",
+        "department": "Computer Science",
+        "sections": 4,
+        "totalStudents": 120
+      }
+    ],
+    "subjectPerformance": [
+      {
+        "code": "CS101",
+        "name": "Data Structures",
+        "sections": 3,
+        "totalStudents": 90,
+        "averageGrade": 2.1,
+        "passRate": 96.5
+      }
+    ]
+  }
+}
+```
+
+**Admission Analytics Response:**
+```javascript
+{
+  "status": "success",
+  "data": {
+    "currentTerm": {
+      "schoolYear": "2024-2025",
+      "semester": "first"
+    },
+    "metrics": {
+      "pending": 8,
+      "confirmedToday": 12,
+      "total": 420,
+      "confirmed": 390,
+      "confirmationRate": 92.86
+    },
+    "trend": [
+      { "date": "2024-09-01", "label": "Sep 1", "count": 5 }
+    ],
+    "programs": [
+      { "name": "BSCS", "count": 150 }
+    ],
+    "recent": [
+      {
+        "id": 501,
+        "studentNo": "2024-0401",
+        "studentEmail": "student.analytics@richwell.edu",
+        "program": "BSCS",
+        "status": "confirmed",
+        "totalUnits": 23,
+        "subjects": 7,
+        "term": "2024-2025 first",
+        "dateEnrolled": "2024-08-12T04:00:00.000Z",
+        "lastStatusAt": "2024-08-12T08:45:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
