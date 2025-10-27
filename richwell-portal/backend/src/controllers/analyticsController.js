@@ -1,5 +1,6 @@
 // backend/src/controllers/analyticsController.js
 import { PrismaClient } from '@prisma/client';
+import { getOrSetAnalyticsCache } from '../utils/cache.js';
 
 const prisma = new PrismaClient();
 
@@ -243,7 +244,6 @@ export const getProfessorAnalytics = async (req, res) => {
  */
 export const getRegistrarAnalytics = async (req, res) => {
   try {
-    // Get current term
     const currentTerm = await prisma.academicTerm.findFirst({
       where: { isActive: true }
     });
@@ -255,99 +255,108 @@ export const getRegistrarAnalytics = async (req, res) => {
       });
     }
 
-    // Get enrollment statistics
-    const totalEnrollments = await prisma.enrollment.count({
-      where: { termId: currentTerm.id }
-    });
-
-    const confirmedEnrollments = await prisma.enrollment.count({
-      where: { 
-        termId: currentTerm.id,
-        status: 'confirmed'
-      }
-    });
-
-    const pendingEnrollments = await prisma.enrollment.count({
-      where: { 
-        termId: currentTerm.id,
-        status: 'pending'
-      }
-    });
-
-    // Get grade statistics
-    const totalGrades = await prisma.grade.count({
-      where: {
-        enrollmentSubject: {
-          enrollment: {
-            termId: currentTerm.id
-          }
-        }
-      }
-    });
-
-    const approvedGrades = await prisma.grade.count({
-      where: {
-        approved: true,
-        enrollmentSubject: {
-          enrollment: {
-            termId: currentTerm.id
-          }
-        }
-      }
-    });
-
-    const pendingGrades = await prisma.grade.count({
-      where: {
-        approved: false,
-        enrollmentSubject: {
-          enrollment: {
-            termId: currentTerm.id
-          }
-        }
-      }
-    });
-
-    // Get program statistics
-    const programStats = await prisma.program.findMany({
-      include: {
-        students: {
-          include: {
-            enrollments: {
-              where: { termId: currentTerm.id }
+    const registrarAnalytics = await getOrSetAnalyticsCache({
+      role: 'registrar',
+      termId: currentTerm.id,
+      fetcher: async () => {
+        const [
+          totalEnrollments,
+          confirmedEnrollments,
+          pendingEnrollments,
+          totalGrades,
+          approvedGrades,
+          pendingGrades,
+          programStats
+        ] = await Promise.all([
+          prisma.enrollment.count({
+            where: { termId: currentTerm.id }
+          }),
+          prisma.enrollment.count({
+            where: {
+              termId: currentTerm.id,
+              status: 'confirmed'
             }
-          }
-        }
+          }),
+          prisma.enrollment.count({
+            where: {
+              termId: currentTerm.id,
+              status: 'pending'
+            }
+          }),
+          prisma.grade.count({
+            where: {
+              enrollmentSubject: {
+                enrollment: {
+                  termId: currentTerm.id
+                }
+              }
+            }
+          }),
+          prisma.grade.count({
+            where: {
+              approved: true,
+              enrollmentSubject: {
+                enrollment: {
+                  termId: currentTerm.id
+                }
+              }
+            }
+          }),
+          prisma.grade.count({
+            where: {
+              approved: false,
+              enrollmentSubject: {
+                enrollment: {
+                  termId: currentTerm.id
+                }
+              }
+            }
+          }),
+          prisma.program.findMany({
+            include: {
+              students: {
+                include: {
+                  enrollments: {
+                    where: { termId: currentTerm.id }
+                  }
+                }
+              }
+            }
+          })
+        ]);
+
+        const programEnrollments = programStats.map(program => ({
+          name: program.name,
+          code: program.code,
+          enrolledStudents: program.students.filter(student =>
+            student.enrollments.length > 0
+          ).length,
+          totalStudents: program.students.length
+        }));
+
+        return {
+          currentTerm: {
+            schoolYear: currentTerm.schoolYear,
+            semester: currentTerm.semester
+          },
+          enrollment: {
+            total: totalEnrollments,
+            confirmed: confirmedEnrollments,
+            pending: pendingEnrollments
+          },
+          grades: {
+            total: totalGrades,
+            approved: approvedGrades,
+            pending: pendingGrades
+          },
+          programs: programEnrollments
+        };
       }
     });
-
-    const programEnrollments = programStats.map(program => ({
-      name: program.name,
-      code: program.code,
-      enrolledStudents: program.students.filter(student => 
-        student.enrollments.length > 0
-      ).length,
-      totalStudents: program.students.length
-    }));
 
     res.status(200).json({
       status: 'success',
-      data: {
-        currentTerm: {
-          schoolYear: currentTerm.schoolYear,
-          semester: currentTerm.semester
-        },
-        enrollment: {
-          total: totalEnrollments,
-          confirmed: confirmedEnrollments,
-          pending: pendingEnrollments
-        },
-        grades: {
-          total: totalGrades,
-          approved: approvedGrades,
-          pending: pendingGrades
-        },
-        programs: programEnrollments
-      }
+      data: registrarAnalytics
     });
   } catch (error) {
     console.error('Get registrar analytics error:', error);
@@ -365,7 +374,6 @@ export const getRegistrarAnalytics = async (req, res) => {
  */
 export const getDeanAnalytics = async (req, res) => {
   try {
-    // Get current term
     const currentTerm = await prisma.academicTerm.findFirst({
       where: { isActive: true }
     });
@@ -377,85 +385,92 @@ export const getDeanAnalytics = async (req, res) => {
       });
     }
 
-    // Get professor load statistics
-    const professors = await prisma.professor.findMany({
-      include: {
-        user: true,
-        sections: {
-          where: {
-            semester: currentTerm.semester,
-            schoolYear: currentTerm.schoolYear
-          },
-          include: {
-            enrollmentSubjects: true
-          }
-        }
-      }
-    });
-
-    const professorLoad = professors.map(professor => ({
-      id: professor.id,
-      name: professor.user.email,
-      department: professor.department,
-      sections: professor.sections.length,
-      totalStudents: professor.sections.reduce((sum, section) => 
-        sum + section.enrollmentSubjects.length, 0
-      )
-    }));
-
-    // Get subject performance
-    const subjects = await prisma.subject.findMany({
-      include: {
-        sections: {
-          where: {
-            semester: currentTerm.semester,
-            schoolYear: currentTerm.schoolYear
-          },
-          include: {
-            enrollmentSubjects: {
-              include: { grade: true }
+    const deanAnalytics = await getOrSetAnalyticsCache({
+      role: 'dean',
+      termId: currentTerm.id,
+      fetcher: async () => {
+        const [professors, subjects] = await Promise.all([
+          prisma.professor.findMany({
+            include: {
+              user: true,
+              sections: {
+                where: {
+                  semester: currentTerm.semester,
+                  schoolYear: currentTerm.schoolYear
+                },
+                include: {
+                  enrollmentSubjects: true
+                }
+              }
             }
-          }
-        }
+          }),
+          prisma.subject.findMany({
+            include: {
+              sections: {
+                where: {
+                  semester: currentTerm.semester,
+                  schoolYear: currentTerm.schoolYear
+                },
+                include: {
+                  enrollmentSubjects: {
+                    include: { grade: true }
+                  }
+                }
+              }
+            }
+          })
+        ]);
+
+        const professorLoad = professors.map(professor => ({
+          id: professor.id,
+          name: professor.user.email,
+          department: professor.department,
+          sections: professor.sections.length,
+          totalStudents: professor.sections.reduce((sum, section) =>
+            sum + section.enrollmentSubjects.length, 0
+          )
+        }));
+
+        const subjectPerformance = subjects.map(subject => {
+          const allGrades = subject.sections.flatMap(section =>
+            section.enrollmentSubjects
+              .filter(es => es.grade && es.grade.approved)
+              .map(es => getNumericGrade(es.grade.gradeValue))
+              .filter(grade => grade !== null)
+          );
+
+          const averageGrade = allGrades.length > 0
+            ? allGrades.reduce((sum, grade) => sum + grade, 0) / allGrades.length
+            : 0;
+
+          return {
+            code: subject.code,
+            name: subject.name,
+            sections: subject.sections.length,
+            totalStudents: subject.sections.reduce((sum, section) =>
+              sum + section.enrollmentSubjects.length, 0
+            ),
+            averageGrade: averageGrade,
+            passRate: allGrades.length > 0
+              ? (allGrades.filter(grade => grade <= 3.0).length / allGrades.length) * 100
+              : 0
+          };
+        });
+
+        return {
+          currentTerm: {
+            schoolYear: currentTerm.schoolYear,
+            semester: currentTerm.semester
+          },
+          professorLoad,
+          subjectPerformance: subjectPerformance.filter(sp => sp.totalStudents > 0)
+        };
       }
-    });
-
-    const subjectPerformance = subjects.map(subject => {
-      const allGrades = subject.sections.flatMap(section =>
-        section.enrollmentSubjects
-          .filter(es => es.grade && es.grade.approved)
-          .map(es => getNumericGrade(es.grade.gradeValue))
-          .filter(grade => grade !== null)
-      );
-
-      const averageGrade = allGrades.length > 0 
-        ? allGrades.reduce((sum, grade) => sum + grade, 0) / allGrades.length 
-        : 0;
-
-      return {
-        code: subject.code,
-        name: subject.name,
-        sections: subject.sections.length,
-        totalStudents: subject.sections.reduce((sum, section) => 
-          sum + section.enrollmentSubjects.length, 0
-        ),
-        averageGrade: averageGrade,
-        passRate: allGrades.length > 0 
-          ? (allGrades.filter(grade => grade <= 3.0).length / allGrades.length) * 100 
-          : 0
-      };
     });
 
     res.status(200).json({
       status: 'success',
-      data: {
-        currentTerm: {
-          schoolYear: currentTerm.schoolYear,
-          semester: currentTerm.semester
-        },
-        professorLoad,
-        subjectPerformance: subjectPerformance.filter(sp => sp.totalStudents > 0)
-      }
+      data: deanAnalytics
     });
   } catch (error) {
     console.error('Get dean analytics error:', error);
@@ -482,195 +497,238 @@ export const getAdmissionAnalytics = async (req, res) => {
       });
     }
 
-    const now = new Date();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(now);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const startOfWindow = new Date(startOfDay);
-    startOfWindow.setDate(startOfWindow.getDate() - 6);
-
-    const enrollmentLogs = await prisma.analyticsLog.findMany({
-      where: { action: 'enrollment_status' },
-      orderBy: { timestamp: 'desc' }
+    const currentTerm = await prisma.academicTerm.findFirst({
+      where: { isActive: true }
     });
 
-    const parsedLogs = enrollmentLogs
-      .map((log) => {
-        try {
-          const payload = log.description ? JSON.parse(log.description) : {};
-          const enrollmentId = Number(payload.enrollmentId);
-
-          if (!enrollmentId || !payload.status) {
-            return null;
-          }
-
-          return {
-            enrollmentId,
-            status: payload.status,
-            termId: payload.termId ?? null,
-            studentId: payload.studentId ?? null,
-            source: payload.source ?? 'unknown',
-            metadata: payload.metadata ?? {},
-            timestamp: log.timestamp
-          };
-        } catch (parseError) {
-          console.warn('Skipping malformed enrollment analytics log:', parseError);
-          return null;
-        }
-      })
-      .filter(Boolean);
-
-    const latestStatusByEnrollment = new Map();
-    parsedLogs.forEach((log) => {
-      const existing = latestStatusByEnrollment.get(log.enrollmentId);
-      if (!existing || existing.timestamp < log.timestamp) {
-        latestStatusByEnrollment.set(log.enrollmentId, log);
-      }
-    });
-
-    const totalEnrollments = latestStatusByEnrollment.size;
-    const pendingEnrollments = Array.from(latestStatusByEnrollment.values())
-      .filter((log) => log.status === 'pending').length;
-    const confirmedEnrollments = Array.from(latestStatusByEnrollment.values())
-      .filter((log) => log.status === 'confirmed').length;
-
-    const confirmedToday = parsedLogs.filter((log) =>
-      log.status === 'confirmed' &&
-      log.timestamp >= startOfDay &&
-      log.timestamp <= endOfDay
-    ).length;
-
-    const confirmedLogsLast7Days = parsedLogs.filter((log) =>
-      log.status === 'confirmed' &&
-      log.timestamp >= startOfWindow &&
-      log.timestamp <= endOfDay
-    );
-
-    const dailyMap = confirmedLogsLast7Days.reduce((acc, log) => {
-      const key = log.timestamp.toISOString().slice(0, 10);
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    const dailyTrend = Array.from({ length: 7 }).map((_, index) => {
-      const day = new Date(startOfWindow);
-      day.setDate(startOfWindow.getDate() + index);
-      const key = day.toISOString().slice(0, 10);
-      return {
-        date: key,
-        label: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        count: dailyMap[key] || 0
-      };
-    });
-
-    const confirmedEnrollmentIds = Array.from(latestStatusByEnrollment.entries())
-      .filter(([, log]) => log.status === 'confirmed')
-      .map(([enrollmentId]) => enrollmentId);
-
-    const recentEnrollmentIds = [];
-    const seenRecent = new Set();
-    for (const log of parsedLogs) {
-      if (!seenRecent.has(log.enrollmentId)) {
-        seenRecent.add(log.enrollmentId);
-        recentEnrollmentIds.push(log.enrollmentId);
-      }
-      if (recentEnrollmentIds.length >= 5) {
-        break;
-      }
+    if (!currentTerm) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No active academic term found'
+      });
     }
 
-    const [programEnrollments, recentEnrollments] = await Promise.all([
-      confirmedEnrollmentIds.length
-        ? prisma.enrollment.findMany({
-            where: { id: { in: confirmedEnrollmentIds } },
-            include: {
-              student: {
-                select: {
-                  program: { select: { id: true, name: true } }
-                }
+    const admissionAnalytics = await getOrSetAnalyticsCache({
+      role: 'admission',
+      termId: currentTerm.id,
+      fetcher: async () => {
+        const now = new Date();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(now);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const startOfWindow = new Date(startOfDay);
+        startOfWindow.setDate(startOfWindow.getDate() - 6);
+
+        const enrollmentLogs = await prisma.analyticsLog.findMany({
+          where: { action: 'enrollment_status' },
+          orderBy: { timestamp: 'desc' }
+        });
+
+        const parsedLogs = enrollmentLogs
+          .map((log) => {
+            try {
+              const payload = log.description ? JSON.parse(log.description) : {};
+              const enrollmentId = Number(payload.enrollmentId);
+
+              if (!Number.isFinite(enrollmentId) || !payload.status) {
+                return null;
               }
+
+              const termIdRaw = payload.termId;
+              const termId = termIdRaw !== undefined && termIdRaw !== null
+                ? Number(termIdRaw)
+                : null;
+              const normalizedTermId = Number.isFinite(termId) ? termId : null;
+
+              const studentIdRaw = payload.studentId;
+              const studentId = studentIdRaw !== undefined && studentIdRaw !== null
+                ? Number(studentIdRaw)
+                : null;
+
+              return {
+                enrollmentId,
+                status: payload.status,
+                termId: normalizedTermId,
+                studentId,
+                source: payload.source ?? 'unknown',
+                metadata: payload.metadata ?? {},
+                timestamp: log.timestamp
+              };
+            } catch (parseError) {
+              console.warn('Skipping malformed enrollment analytics log:', parseError);
+              return null;
             }
           })
-        : Promise.resolve([]),
-      recentEnrollmentIds.length
-        ? prisma.enrollment.findMany({
-            where: { id: { in: recentEnrollmentIds } },
-            include: {
-              student: {
-                select: {
-                  studentNo: true,
-                  program: { select: { name: true } },
-                  user: { select: { email: true } }
-                }
-              },
-              term: true,
-              enrollmentSubjects: true
-            }
-          })
-        : Promise.resolve([])
-    ]);
+          .filter(Boolean);
 
-    const programDistributionMap = programEnrollments.reduce((acc, enrollment) => {
-      const program = enrollment.student?.program;
-      if (!program) return acc;
-      acc[program.name] = (acc[program.name] || 0) + 1;
-      return acc;
-    }, {});
+        const logsForTerm = parsedLogs.filter((log) => log.termId === currentTerm.id);
+        const relevantLogs = logsForTerm.length > 0 ? logsForTerm : parsedLogs;
 
-    const programDistribution = Object.entries(programDistributionMap)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
+        const latestStatusByEnrollment = new Map();
+        relevantLogs.forEach((log) => {
+          const existing = latestStatusByEnrollment.get(log.enrollmentId);
+          if (!existing || existing.timestamp < log.timestamp) {
+            latestStatusByEnrollment.set(log.enrollmentId, log);
+          }
+        });
 
-    const recentEnrollmentMap = recentEnrollments.reduce((acc, enrollment) => {
-      acc.set(enrollment.id, enrollment);
-      return acc;
-    }, new Map());
+        const totalEnrollments = latestStatusByEnrollment.size;
+        const pendingEnrollments = Array.from(latestStatusByEnrollment.values())
+          .filter((log) => log.status === 'pending').length;
+        const confirmedEnrollments = Array.from(latestStatusByEnrollment.values())
+          .filter((log) => log.status === 'confirmed').length;
 
-    const recent = recentEnrollmentIds
-      .map((enrollmentId) => {
-        const enrollment = recentEnrollmentMap.get(enrollmentId);
-        const statusLog = latestStatusByEnrollment.get(enrollmentId);
+        const confirmedToday = relevantLogs.filter((log) =>
+          log.status === 'confirmed' &&
+          log.timestamp >= startOfDay &&
+          log.timestamp <= endOfDay
+        ).length;
 
-        if (!enrollment || !statusLog) {
-          return null;
+        const confirmedLogsLast7Days = relevantLogs.filter((log) =>
+          log.status === 'confirmed' &&
+          log.timestamp >= startOfWindow &&
+          log.timestamp <= endOfDay
+        );
+
+        const dailyMap = confirmedLogsLast7Days.reduce((acc, log) => {
+          const key = log.timestamp.toISOString().slice(0, 10);
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+
+        const dailyTrend = Array.from({ length: 7 }).map((_, index) => {
+          const day = new Date(startOfWindow);
+          day.setDate(startOfWindow.getDate() + index);
+          const key = day.toISOString().slice(0, 10);
+          return {
+            date: key,
+            label: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            count: dailyMap[key] || 0
+          };
+        });
+
+        const confirmedEnrollmentIds = Array.from(latestStatusByEnrollment.entries())
+          .filter(([, log]) => log.status === 'confirmed')
+          .map(([enrollmentId]) => enrollmentId);
+
+        const recentEnrollmentIds = [];
+        const seenRecent = new Set();
+        for (const log of relevantLogs) {
+          if (!seenRecent.has(log.enrollmentId)) {
+            seenRecent.add(log.enrollmentId);
+            recentEnrollmentIds.push(log.enrollmentId);
+          }
+          if (recentEnrollmentIds.length >= 5) {
+            break;
+          }
         }
 
-        return {
-          id: enrollment.id,
-          studentNo: enrollment.student?.studentNo,
-          studentEmail: enrollment.student?.user?.email,
-          program: enrollment.student?.program?.name,
-          status: statusLog.status,
-          totalUnits: enrollment.totalUnits,
-          subjects: enrollment.enrollmentSubjects.length,
-          term: `${enrollment.term.schoolYear} ${enrollment.term.semester}`,
-          dateEnrolled: enrollment.dateEnrolled,
-          lastStatusAt: statusLog.timestamp
-        };
-      })
-      .filter(Boolean);
+        const [programEnrollments, recentEnrollments] = await Promise.all([
+          confirmedEnrollmentIds.length
+            ? prisma.enrollment.findMany({
+                where: {
+                  id: { in: confirmedEnrollmentIds },
+                  termId: currentTerm.id
+                },
+                include: {
+                  student: {
+                    select: {
+                      program: { select: { id: true, name: true } }
+                    }
+                  }
+                }
+              })
+            : Promise.resolve([]),
+          recentEnrollmentIds.length
+            ? prisma.enrollment.findMany({
+                where: {
+                  id: { in: recentEnrollmentIds },
+                  termId: currentTerm.id
+                },
+                include: {
+                  student: {
+                    select: {
+                      studentNo: true,
+                      program: { select: { name: true } },
+                      user: { select: { email: true } }
+                    }
+                  },
+                  term: true,
+                  enrollmentSubjects: true
+                }
+              })
+            : Promise.resolve([])
+        ]);
 
-    const confirmationRate = totalEnrollments > 0
-      ? (confirmedEnrollments / totalEnrollments) * 100
-      : 0;
+        const programDistributionMap = programEnrollments.reduce((acc, enrollment) => {
+          const program = enrollment.student?.program;
+          if (!program) return acc;
+          acc[program.name] = (acc[program.name] || 0) + 1;
+          return acc;
+        }, {});
+
+        const programDistribution = Object.entries(programDistributionMap)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6);
+
+        const recentEnrollmentMap = recentEnrollments.reduce((acc, enrollment) => {
+          acc.set(enrollment.id, enrollment);
+          return acc;
+        }, new Map());
+
+        const recent = recentEnrollmentIds
+          .map((enrollmentId) => {
+            const enrollment = recentEnrollmentMap.get(enrollmentId);
+            const statusLog = latestStatusByEnrollment.get(enrollmentId);
+
+            if (!enrollment || !statusLog) {
+              return null;
+            }
+
+            return {
+              id: enrollment.id,
+              studentNo: enrollment.student?.studentNo,
+              studentEmail: enrollment.student?.user?.email,
+              program: enrollment.student?.program?.name,
+              status: statusLog.status,
+              totalUnits: enrollment.totalUnits,
+              subjects: enrollment.enrollmentSubjects.length,
+              term: `${enrollment.term.schoolYear} ${enrollment.term.semester}`,
+              dateEnrolled: enrollment.dateEnrolled,
+              lastStatusAt: statusLog.timestamp
+            };
+          })
+          .filter(Boolean);
+
+        const confirmationRate = totalEnrollments > 0
+          ? (confirmedEnrollments / totalEnrollments) * 100
+          : 0;
+
+        return {
+          currentTerm: {
+            schoolYear: currentTerm.schoolYear,
+            semester: currentTerm.semester
+          },
+          metrics: {
+            pending: pendingEnrollments,
+            confirmedToday,
+            total: totalEnrollments,
+            confirmed: confirmedEnrollments,
+            confirmationRate
+          },
+          trend: dailyTrend,
+          programs: programDistribution,
+          recent
+        };
+      }
+    });
 
     res.status(200).json({
       status: 'success',
-      data: {
-        metrics: {
-          pending: pendingEnrollments,
-          confirmedToday,
-          total: totalEnrollments,
-          confirmed: confirmedEnrollments,
-          confirmationRate
-        },
-        trend: dailyTrend,
-        programs: programDistribution,
-        recent
-      }
+      data: admissionAnalytics
     });
   } catch (error) {
     console.error('Get admission analytics error:', error);

@@ -1,5 +1,6 @@
 // backend/src/controllers/gradeController.js
 import { PrismaClient } from '@prisma/client';
+import { invalidateAnalyticsCacheForTerm } from '../utils/cache.js';
 
 const prisma = new PrismaClient();
 
@@ -161,6 +162,12 @@ export const updateGrade = async (req, res) => {
         where: { id: enrollmentSubject.enrollment.studentId },
         data: { hasInc: true }
       });
+    }
+
+    try {
+      invalidateAnalyticsCacheForTerm(enrollmentSubject.enrollment.termId);
+    } catch (cacheError) {
+      console.warn('Failed to invalidate analytics cache after grade update:', cacheError);
     }
 
     res.status(200).json({

@@ -1,6 +1,7 @@
 // backend/src/controllers/enrollmentController.js
 import { PrismaClient } from '@prisma/client';
 import { recordEnrollmentStatusLog } from '../utils/analytics.js';
+import { invalidateAnalyticsCacheForTerm } from '../utils/cache.js';
 
 const prisma = new PrismaClient();
 
@@ -411,6 +412,12 @@ export const enrollStudent = async (req, res) => {
       console.error('Failed to record enrollment analytics log:', logError);
     }
 
+    try {
+      invalidateAnalyticsCacheForTerm(currentTerm.id);
+    } catch (cacheError) {
+      console.warn('Failed to invalidate analytics cache after enrollment creation:', cacheError);
+    }
+
     res.status(201).json({
       status: 'success',
       message: 'Enrollment submitted successfully',
@@ -544,6 +551,12 @@ export const cancelEnrollment = async (req, res) => {
       console.error('Failed to record cancellation analytics log:', logError);
     }
 
+    try {
+      invalidateAnalyticsCacheForTerm(enrollment.termId);
+    } catch (cacheError) {
+      console.warn('Failed to invalidate analytics cache after enrollment cancellation:', cacheError);
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Enrollment cancelled successfully'
@@ -625,6 +638,12 @@ export const updateEnrollmentStatus = async (req, res) => {
       });
     } catch (logError) {
       console.error('Failed to record enrollment status analytics log:', logError);
+    }
+
+    try {
+      invalidateAnalyticsCacheForTerm(enrollment.termId);
+    } catch (cacheError) {
+      console.warn('Failed to invalidate analytics cache after enrollment status update:', cacheError);
     }
 
     res.status(200).json({
