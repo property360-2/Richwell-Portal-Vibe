@@ -159,6 +159,54 @@
    - Frontend: http://192.168.1.100:3000
    - Backend API: http://192.168.1.100:5000
 
+## ✅ Post-Deployment Verification
+
+### Analytics Smoke Tests
+
+Run a lightweight verification suite against the deployed backend immediately after each deployment.
+
+1. **Configure environment variables** for the automation user accounts that exist in the target environment:
+   ```bash
+   export ANALYTICS_BASE_URL="https://api.richwell.edu"
+   export ANALYTICS_STUDENT_EMAIL="student.analytics@richwell.edu"
+   export ANALYTICS_STUDENT_PASSWORD="<password>"
+   export ANALYTICS_PROFESSOR_EMAIL="professor.analytics@richwell.edu"
+   export ANALYTICS_PROFESSOR_PASSWORD="<password>"
+   export ANALYTICS_REGISTRAR_EMAIL="registrar.analytics@richwell.edu"
+   export ANALYTICS_REGISTRAR_PASSWORD="<password>"
+   export ANALYTICS_DEAN_EMAIL="dean.analytics@richwell.edu"
+   export ANALYTICS_DEAN_PASSWORD="<password>"
+   export ANALYTICS_ADMISSION_EMAIL="admission.analytics@richwell.edu"
+   export ANALYTICS_ADMISSION_PASSWORD="<password>"
+   ```
+
+2. **Execute the smoke test script**
+   ```bash
+   cd richwell-portal/backend
+   npm run postdeploy
+   ```
+
+3. **Integrate into CI/CD** by adding a post-deployment step. For GitHub Actions, append to your deployment job:
+   ```yaml
+   - name: Analytics smoke tests
+     working-directory: richwell-portal/backend
+     run: npm run postdeploy
+     env:
+       ANALYTICS_BASE_URL: ${{ secrets.ANALYTICS_BASE_URL }}
+       ANALYTICS_STUDENT_EMAIL: ${{ secrets.ANALYTICS_STUDENT_EMAIL }}
+       ANALYTICS_STUDENT_PASSWORD: ${{ secrets.ANALYTICS_STUDENT_PASSWORD }}
+       ANALYTICS_PROFESSOR_EMAIL: ${{ secrets.ANALYTICS_PROFESSOR_EMAIL }}
+       ANALYTICS_PROFESSOR_PASSWORD: ${{ secrets.ANALYTICS_PROFESSOR_PASSWORD }}
+       ANALYTICS_REGISTRAR_EMAIL: ${{ secrets.ANALYTICS_REGISTRAR_EMAIL }}
+       ANALYTICS_REGISTRAR_PASSWORD: ${{ secrets.ANALYTICS_REGISTRAR_PASSWORD }}
+       ANALYTICS_DEAN_EMAIL: ${{ secrets.ANALYTICS_DEAN_EMAIL }}
+       ANALYTICS_DEAN_PASSWORD: ${{ secrets.ANALYTICS_DEAN_PASSWORD }}
+       ANALYTICS_ADMISSION_EMAIL: ${{ secrets.ANALYTICS_ADMISSION_EMAIL }}
+       ANALYTICS_ADMISSION_PASSWORD: ${{ secrets.ANALYTICS_ADMISSION_PASSWORD }}
+   ```
+
+The script authenticates each role, hits the `/api/analytics/*` endpoints, and validates the response structure so regressions are detected within the pipeline.
+
 ## 🐳 Docker Deployment
 
 ### Step 1: Create Dockerfile
