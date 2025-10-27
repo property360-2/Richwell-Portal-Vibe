@@ -11,6 +11,7 @@ import Card from '../../components/common/Card';
 import Chart from '../../components/common/Chart';
 import Table from '../../components/common/Table';
 import Alert from '../../components/common/Alert';
+import KpiCard from '../../components/common/KpiCard';
 import { apiService } from '../../utils/api';
 
 const AdmissionDashboard = () => {
@@ -27,7 +28,7 @@ const AdmissionDashboard = () => {
       setLoading(true);
       const response = await apiService.get('/analytics/admission');
       setAnalytics(response.data.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load admission analytics');
     } finally {
       setLoading(false);
@@ -165,23 +166,7 @@ const AdmissionDashboard = () => {
         {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {metricCards.map(card => (
-            <Card
-              key={card.title}
-              className={`bg-gradient-to-br ${card.gradient} text-white`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white text-opacity-80">{card.title}</p>
-                  <p className="text-3xl font-bold mt-2">{card.value}</p>
-                  <p className="text-xs text-white text-opacity-80 mt-2">
-                    {card.subtitle}
-                  </p>
-                </div>
-                <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                  {card.icon}
-                </div>
-              </div>
-            </Card>
+            <KpiCard key={card.title} {...card} />
           ))}
         </div>
 

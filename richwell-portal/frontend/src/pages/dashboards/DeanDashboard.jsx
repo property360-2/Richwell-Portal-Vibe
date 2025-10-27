@@ -5,6 +5,8 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Table from '../../components/common/Table';
 import Alert from '../../components/common/Alert';
+import Chart from '../../components/common/Chart';
+import KpiCard from '../../components/common/KpiCard';
 import { apiService } from '../../utils/api';
 import { getDeanSummary } from './dashboardMetrics';
 
@@ -23,7 +25,7 @@ const DeanDashboard = () => {
         setLoading(true);
         const response = await apiService.get('/analytics/dean');
         setAnalytics(response.data.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load dean analytics');
       } finally {
         setLoading(false);
@@ -113,6 +115,68 @@ const DeanDashboard = () => {
     }
   ]), [summary]);
 
+  const professorLoadData = useMemo(() => {
+    const dataset = analytics?.professorLoad ?? [];
+
+    if (dataset.length === 0) {
+      return {
+        labels: ['No data'],
+        datasets: [
+          {
+            label: 'Sections',
+            data: [0],
+            backgroundColor: '#DDD6FE'
+          }
+        ]
+      };
+    }
+
+    return {
+      labels: dataset.map(item => item.name ?? 'Professor'),
+      datasets: [
+        {
+          label: 'Sections',
+          data: dataset.map(item => item.sections ?? 0),
+          backgroundColor: '#8B5CF6'
+        }
+      ]
+    };
+  }, [analytics]);
+
+  const subjectPassRateData = useMemo(() => {
+    const dataset = analytics?.subjectPerformance ?? [];
+
+    if (dataset.length === 0) {
+      return {
+        labels: ['No data'],
+        datasets: [
+          {
+            label: 'Pass Rate',
+            data: [0],
+            borderColor: '#22C55E',
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
+            tension: 0.4,
+            fill: true
+          }
+        ]
+      };
+    }
+
+    return {
+      labels: dataset.map(item => item.code ?? item.name ?? 'Subject'),
+      datasets: [
+        {
+          label: 'Pass Rate',
+          data: dataset.map(item => item.passRate ?? 0),
+          borderColor: '#22C55E',
+          backgroundColor: 'rgba(34, 197, 94, 0.15)',
+          tension: 0.4,
+          fill: true
+        }
+      ]
+    };
+  }, [analytics]);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -156,22 +220,23 @@ const DeanDashboard = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {metricCards.map(card => (
-            <Card
-              key={card.title}
-              className={`bg-gradient-to-br ${card.gradient} text-white`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white text-opacity-80">{card.title}</p>
-                  <p className="text-3xl font-bold mt-2">{card.value}</p>
-                  <p className="text-xs text-white text-opacity-80 mt-2">{card.subtitle}</p>
-                </div>
-                <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                  {card.icon}
-                </div>
-              </div>
-            </Card>
+            <KpiCard key={card.title} {...card} />
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Chart
+            title="Professor Section Load"
+            type="bar"
+            data={professorLoadData}
+            height={320}
+          />
+          <Chart
+            title="Subject Pass Rates"
+            type="line"
+            data={subjectPassRateData}
+            height={320}
+          />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
