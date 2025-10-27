@@ -68,6 +68,19 @@ export const generateStudentNumber = async (prisma) => {
 };
 
 /**
+ * Generate a random temporary password for onboarding
+ */
+export const generateTemporaryPassword = (length = 12) => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < length; i += 1) {
+    const index = Math.floor(Math.random() * chars.length);
+    password += chars.charAt(index);
+  }
+  return password;
+};
+
+/**
  * Role mappings
  */
 export const ROLES = {
