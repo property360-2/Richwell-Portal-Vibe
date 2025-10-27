@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "npx --yes @playwright/test@1.49.1 test",
+    "test:e2e:update": "npx --yes @playwright/test@1.49.1 test --update-snapshots"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.16",
