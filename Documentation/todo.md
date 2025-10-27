@@ -5,7 +5,7 @@ This checklist outlines the remaining work needed to progress through the upcomi
 ## Phase 3 – Academic Data Management
 - [ ] Audit CRUD flows for programs, subjects, sections, and academic terms to confirm all operations are wired to their routes (`programRoutes.js`, `subjectRoutes.js`, `sectionRoutes.js`, `academicTermRoutes.js`).
 - [ ] Backfill automated tests or Postman collections that cover the above routes to ensure regression coverage.
-- [ ] Document data seeding expectations for each catalog table so testers can prepare baseline data.
+- [ ] Document data seeding expectations for each catalog table so testers can prepare baseline data (see [Documentation/seeding.md](./seeding.md)).
 
 ## Phase 4 – Enrollment System
 - [ ] Implement student-facing enrollment endpoints (e.g., `/api/enrollments`) that validate prerequisites, INC blocks, and section slot limits before committing records in `enrollmentController.js`.
