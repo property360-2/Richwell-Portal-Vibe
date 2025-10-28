@@ -4,76 +4,154 @@ import app from '../src/server.js';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+const HASHED_PASSWORD = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
-describe('Grade Routes Authorization', () => {
-  let studentToken;
-  let professorToken;
+describe('Grade Routes Authorization Matrix', () => {
+  let tokens;
+  let context;
 
-  beforeEach(async () => {
-    // Clean up data used in tests
+  const cleanupDatabase = async () => {
     await prisma.grade.deleteMany();
     await prisma.enrollmentSubject.deleteMany();
     await prisma.enrollment.deleteMany();
     await prisma.analyticsLog.deleteMany();
     await prisma.section.deleteMany();
     await prisma.subject.deleteMany();
-    await prisma.program.deleteMany();
     await prisma.student.deleteMany();
     await prisma.professor.deleteMany();
+    await prisma.program.deleteMany();
+    await prisma.academicTerm.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
+  };
 
-    // Create roles
+  beforeEach(async () => {
+    await cleanupDatabase();
+
+    tokens = {};
+    context = {};
+
     const studentRole = await prisma.role.create({ data: { name: 'student' } });
     const professorRole = await prisma.role.create({ data: { name: 'professor' } });
-    await prisma.role.create({ data: { name: 'registrar' } });
+    const registrarRole = await prisma.role.create({ data: { name: 'registrar' } });
+    const deanRole = await prisma.role.create({ data: { name: 'dean' } });
 
-    const hashedPassword = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+    const createUser = (email, roleId) =>
+      prisma.user.create({
+        data: {
+          email,
+          password: HASHED_PASSWORD,
+          roleId,
+          status: 'active'
+        }
+      });
 
-    // Create users
-    await prisma.user.create({
+    const loginAndStore = async (key, email) => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({ email, password: 'password' });
+
+      tokens[key] = response.body.token;
+    };
+
+    const program = await prisma.program.create({
       data: {
-        email: 'student@example.com',
-        password: hashedPassword,
-        roleId: studentRole.id,
-        status: 'active'
+        name: 'Bachelor of Science in Computer Science',
+        code: 'BSCS',
+        description: 'Test program'
       }
     });
 
-    const professorUser = await prisma.user.create({
+    const subject = await prisma.subject.create({
       data: {
-        email: 'professor@example.com',
-        password: hashedPassword,
-        roleId: professorRole.id,
-        status: 'active'
+        code: 'CS101',
+        name: 'Introduction to Computer Science',
+        units: 3,
+        subjectType: 'major',
+        programId: program.id
       }
     });
 
-    await prisma.professor.create({
+    const academicTerm = await prisma.academicTerm.create({
+      data: {
+        schoolYear: '2024-2025',
+        semester: 'first',
+        isActive: true
+      }
+    });
+
+    const professorUser = await createUser('professor@example.com', professorRole.id);
+    const professorProfile = await prisma.professor.create({
       data: {
         userId: professorUser.id,
         department: 'Computer Science'
       }
     });
+    await loginAndStore('professor', 'professor@example.com');
 
-    // Login to get tokens for each role
-    const studentLogin = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'student@example.com',
-        password: 'password'
-      });
+    const section = await prisma.section.create({
+      data: {
+        name: 'CS101-A',
+        subjectId: subject.id,
+        professorId: professorProfile.id,
+        maxSlots: 30,
+        availableSlots: 30,
+        semester: 'first',
+        schoolYear: '2024-2025',
+        status: 'open'
+      }
+    });
 
-    studentToken = studentLogin.body.token;
+    const studentUser = await createUser('student@example.com', studentRole.id);
+    const studentProfile = await prisma.student.create({
+      data: {
+        userId: studentUser.id,
+        studentNo: 'S-1001',
+        programId: program.id,
+        yearLevel: 1
+      }
+    });
+    await loginAndStore('student', 'student@example.com');
 
-    const professorLogin = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'professor@example.com',
-        password: 'password'
-      });
+    const enrollment = await prisma.enrollment.create({
+      data: {
+        studentId: studentProfile.id,
+        termId: academicTerm.id,
+        totalUnits: 3,
+        status: 'enrolled',
+        dateEnrolled: new Date()
+      }
+    });
 
-    professorToken = professorLogin.body.token;
+    const enrollmentSubject = await prisma.enrollmentSubject.create({
+      data: {
+        enrollmentId: enrollment.id,
+        subjectId: subject.id,
+        sectionId: section.id,
+        units: 3
+      }
+    });
+
+    const gradeRecord = await prisma.grade.create({
+      data: {
+        enrollmentSubjectId: enrollmentSubject.id,
+        gradeValue: 'grade_3_0',
+        remarks: 'Initial grade',
+        encodedBy: professorProfile.id,
+        approved: false
+      }
+    });
+
+    const registrarUser = await createUser('registrar@example.com', registrarRole.id);
+    await loginAndStore('registrar', 'registrar@example.com');
+
+    const deanUser = await createUser('dean@example.com', deanRole.id);
+    await loginAndStore('dean', 'dean@example.com');
+
+    context = {
+      enrollmentSubjectId: enrollmentSubject.id,
+      gradeId: gradeRecord.id
+    };
   });
 
   afterAll(async () => {
@@ -81,51 +159,127 @@ describe('Grade Routes Authorization', () => {
   });
 
   describe('Professor routes', () => {
-    it('should return 403 for non-professor accessing sections', async () => {
+    it('allows professors to view their sections', async () => {
       const response = await request(app)
         .get('/api/grades/sections')
-        .set('Authorization', `Bearer ${studentToken}`);
+        .set('Authorization', `Bearer ${tokens.professor}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
     });
 
-    it('should return 403 for non-professor updating grades', async () => {
+    ['student', 'registrar', 'dean'].forEach((role) => {
+      it(`denies ${role} users when listing sections`, async () => {
+        const response = await request(app)
+          .get('/api/grades/sections')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    it('allows professors to update grades', async () => {
       const response = await request(app)
-        .put('/api/grades/1')
-        .set('Authorization', `Bearer ${studentToken}`)
+        .put(`/api/grades/${context.enrollmentSubjectId}`)
+        .set('Authorization', `Bearer ${tokens.professor}`)
         .send({
           gradeValue: 'grade_1_0',
-          remarks: 'Excellent work'
+          remarks: 'Updated grade'
         });
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Grade updated successfully');
+    });
+
+    ['student', 'registrar', 'dean'].forEach((role) => {
+      it(`denies ${role} users from updating grades`, async () => {
+        const response = await request(app)
+          .put(`/api/grades/${context.enrollmentSubjectId}`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            gradeValue: 'grade_1_0',
+            remarks: 'Attempted update'
+          });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
   describe('Registrar routes', () => {
-    it('should return 403 for non-registrar accessing pending approvals', async () => {
+    it('allows registrars to view pending approvals', async () => {
       const response = await request(app)
         .get('/api/grades/pending-approval')
-        .set('Authorization', `Bearer ${professorToken}`);
+        .set('Authorization', `Bearer ${tokens.registrar}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
     });
 
-    it('should return 403 for non-registrar approving grade', async () => {
+    ['student', 'professor', 'dean'].forEach((role) => {
+      it(`denies ${role} users from viewing pending approvals`, async () => {
+        const response = await request(app)
+          .get('/api/grades/pending-approval')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    it('allows registrars to approve a grade', async () => {
       const response = await request(app)
-        .put('/api/grades/1/approve')
-        .set('Authorization', `Bearer ${professorToken}`)
+        .put(`/api/grades/${context.gradeId}/approve`)
+        .set('Authorization', `Bearer ${tokens.registrar}`)
         .send({ approved: true });
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Grade approved successfully');
+      expect(response.body.data.approved).toBe(true);
+    });
+
+    ['student', 'professor', 'dean'].forEach((role) => {
+      it(`denies ${role} users from approving a grade`, async () => {
+        const response = await request(app)
+          .put(`/api/grades/${context.gradeId}/approve`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({ approved: true });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    it('allows registrars to bulk approve grades', async () => {
+      const response = await request(app)
+        .put('/api/grades/bulk-approve')
+        .set('Authorization', `Bearer ${tokens.registrar}`)
+        .send({ gradeIds: [context.gradeId] });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toContain('grades approved successfully');
+    });
+
+    ['student', 'professor', 'dean'].forEach((role) => {
+      it(`denies ${role} users from bulk approving grades`, async () => {
+        const response = await request(app)
+          .put('/api/grades/bulk-approve')
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({ gradeIds: [context.gradeId] });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 });

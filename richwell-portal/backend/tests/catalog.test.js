@@ -14,6 +14,8 @@ describe('Catalog API', () => {
   let section;
   let activeTerm;
   let inactiveTerm;
+  let tokens;
+  let uniqueCounter = 0;
 
   const cleanupDatabase = async () => {
     await prisma.grade.deleteMany();
@@ -32,6 +34,8 @@ describe('Catalog API', () => {
   beforeEach(async () => {
     await cleanupDatabase();
 
+    tokens = {};
+
     const registrarRole = await prisma.role.create({
       data: { name: 'registrar' }
     });
@@ -40,27 +44,39 @@ describe('Catalog API', () => {
       data: { name: 'professor' }
     });
 
-    await prisma.role.create({
+    const studentRole = await prisma.role.create({
       data: { name: 'student' }
     });
 
-    const registrarUser = await prisma.user.create({
-      data: {
-        email: 'registrar@example.com',
-        password: HASHED_PASSWORD,
-        roleId: registrarRole.id,
-        status: 'active'
-      }
+    const deanRole = await prisma.role.create({
+      data: { name: 'dean' }
     });
 
-    const professorUser = await prisma.user.create({
-      data: {
-        email: 'professor@example.com',
-        password: HASHED_PASSWORD,
-        roleId: professorRole.id,
-        status: 'active'
-      }
-    });
+    const createUser = (email, roleId) =>
+      prisma.user.create({
+        data: {
+          email,
+          password: HASHED_PASSWORD,
+          roleId,
+          status: 'active'
+        }
+      });
+
+    const loginAndStore = async (key, email) => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email,
+          password: 'password'
+        });
+
+      tokens[key] = response.body.token;
+    };
+
+    const registrarUser = await createUser('registrar@example.com', registrarRole.id);
+    const professorUser = await createUser('professor@example.com', professorRole.id);
+    const studentUser = await createUser('student@example.com', studentRole.id);
+    await createUser('dean@example.com', deanRole.id);
 
     const professor = await prisma.professor.create({
       data: {
@@ -69,20 +85,20 @@ describe('Catalog API', () => {
       }
     });
 
-    const loginResponse = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'registrar@example.com',
-        password: 'password'
-      });
-
-    authToken = loginResponse.body.token;
-
     program = await prisma.program.create({
       data: {
         name: 'Bachelor of Science in Information Technology',
         code: 'BSIT',
         description: 'IT program overview'
+      }
+    });
+
+    await prisma.student.create({
+      data: {
+        userId: studentUser.id,
+        studentNo: 'S-2001',
+        programId: program.id,
+        yearLevel: 1
       }
     });
 
@@ -135,6 +151,13 @@ describe('Catalog API', () => {
         isActive: false
       }
     });
+
+    await loginAndStore('registrar', 'registrar@example.com');
+    await loginAndStore('professor', 'professor@example.com');
+    await loginAndStore('student', 'student@example.com');
+    await loginAndStore('dean', 'dean@example.com');
+
+    authToken = tokens.registrar;
   });
 
   afterEach(async () => {
@@ -182,6 +205,125 @@ describe('Catalog API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.status).toBe('error');
+    });
+  });
+
+  describe('Program authorization matrix', () => {
+    const authenticatedRoles = ['registrar', 'professor', 'student', 'dean'];
+
+    it('allows all authenticated roles to list programs', async () => {
+      for (const role of authenticatedRoles) {
+        const response = await request(app)
+          .get('/api/programs')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+      }
+    });
+
+    ['registrar', 'dean'].forEach((role) => {
+      it(`allows ${role} users to create programs`, async () => {
+        const uniqueCode = `NP${++uniqueCounter}`;
+        const response = await request(app)
+          .post('/api/programs')
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: `New Program ${role}`,
+            code: uniqueCode,
+            description: 'Created in authorization matrix test'
+          });
+
+        expect(response.status).toBe(201);
+        expect(response.body.status).toBe('success');
+        expect(response.body.data.code).toBe(uniqueCode);
+      });
+    });
+
+    ['student', 'professor'].forEach((role) => {
+      it(`denies ${role} users from creating programs`, async () => {
+        const response = await request(app)
+          .post('/api/programs')
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: 'Unauthorized Program',
+            code: `UP${++uniqueCounter}`,
+            description: 'Should not be created'
+          });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    ['registrar', 'dean'].forEach((role) => {
+      it(`allows ${role} users to update programs`, async () => {
+        const response = await request(app)
+          .put(`/api/programs/${program.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: `Updated Program ${role}`,
+            description: 'Updated in authorization matrix test'
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+        expect(response.body.data.name).toBe(`Updated Program ${role}`);
+      });
+    });
+
+    ['student', 'professor'].forEach((role) => {
+      it(`denies ${role} users from updating programs`, async () => {
+        const response = await request(app)
+          .put(`/api/programs/${program.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: 'Unauthorized Update'
+          });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    it('allows dean users to delete programs without dependents', async () => {
+      const deletableProgram = await prisma.program.create({
+        data: {
+          name: 'Temporary Program',
+          code: `TMP${++uniqueCounter}`,
+          description: 'Safe to delete'
+        }
+      });
+
+      const response = await request(app)
+        .delete(`/api/programs/${deletableProgram.id}`)
+        .set('Authorization', `Bearer ${tokens.dean}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Program deleted successfully');
+    });
+
+    ['student', 'professor', 'registrar'].forEach((role) => {
+      it(`denies ${role} users from deleting programs`, async () => {
+        const deletableProgram = await prisma.program.create({
+          data: {
+            name: 'Protected Program',
+            code: `PR${++uniqueCounter}`,
+            description: 'Should not be removed'
+          }
+        });
+
+        const response = await request(app)
+          .delete(`/api/programs/${deletableProgram.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
@@ -250,6 +392,126 @@ describe('Catalog API', () => {
 
       expect(response.status).toBe(404);
       expect(response.body.status).toBe('error');
+    });
+  });
+
+  describe('Section authorization matrix', () => {
+    const authenticatedRoles = ['registrar', 'professor', 'student', 'dean'];
+
+    it('allows all authenticated roles to list sections', async () => {
+      for (const role of authenticatedRoles) {
+        const response = await request(app)
+          .get('/api/sections')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+      }
+    });
+
+    ['registrar', 'dean'].forEach((role) => {
+      it(`allows ${role} users to create sections`, async () => {
+        const response = await request(app)
+          .post('/api/sections')
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: `IT101-${role.slice(0, 1).toUpperCase()}${++uniqueCounter}`,
+            subjectId: primarySubject.id,
+            professorId: section.professorId,
+            maxSlots: 35,
+            semester: 'first',
+            schoolYear: '2024-2025',
+            schedule: 'TTh 9:00-10:30'
+          });
+
+        expect(response.status).toBe(201);
+        expect(response.body.status).toBe('success');
+        expect(response.body.data.name).toContain('IT101-');
+      });
+    });
+
+    ['student', 'professor'].forEach((role) => {
+      it(`denies ${role} users from creating sections`, async () => {
+        const response = await request(app)
+          .post('/api/sections')
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            name: 'Unauthorized Section',
+            subjectId: primarySubject.id,
+            professorId: section.professorId,
+            maxSlots: 30,
+            semester: 'first',
+            schoolYear: '2024-2025'
+          });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    ['registrar', 'dean'].forEach((role) => {
+      it(`allows ${role} users to update sections`, async () => {
+        const response = await request(app)
+          .put(`/api/sections/${section.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({
+            maxSlots: 45,
+            schedule: 'MWF 8:00-9:00'
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+        expect(response.body.data.maxSlots).toBe(45);
+      });
+    });
+
+    ['student', 'professor'].forEach((role) => {
+      it(`denies ${role} users from updating sections`, async () => {
+        const response = await request(app)
+          .put(`/api/sections/${section.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`)
+          .send({ maxSlots: 50 });
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+
+    it('allows dean users to delete sections', async () => {
+      const response = await request(app)
+        .delete(`/api/sections/${section.id}`)
+        .set('Authorization', `Bearer ${tokens.dean}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Section deleted successfully');
+    });
+
+    ['student', 'professor', 'registrar'].forEach((role) => {
+      it(`denies ${role} users from deleting sections`, async () => {
+        const freshSection = await prisma.section.create({
+          data: {
+            name: `IT101-Z${++uniqueCounter}`,
+            subjectId: primarySubject.id,
+            professorId: section.professorId,
+            maxSlots: 30,
+            availableSlots: 30,
+            semester: 'first',
+            schoolYear: '2024-2025',
+            status: 'open'
+          }
+        });
+
+        const response = await request(app)
+          .delete(`/api/sections/${freshSection.id}`)
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
