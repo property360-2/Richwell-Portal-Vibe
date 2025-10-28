@@ -1,6 +1,5 @@
 // frontend/src/pages/registrar/GradeApprovalPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -11,7 +10,6 @@ import { CheckCircle, Clock, Users, FileText, AlertCircle } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const GradeApprovalPage = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [pendingGrades, setPendingGrades] = useState([]);
   const [selectedGrades, setSelectedGrades] = useState([]);
@@ -20,21 +18,22 @@ const GradeApprovalPage = () => {
   const [success, setSuccess] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  useEffect(() => {
-    loadPendingGrades();
-  }, []);
-
-  const loadPendingGrades = async () => {
+  const loadPendingGrades = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/grades/pending-approval');
       setPendingGrades(response.data.data.pendingGrades);
     } catch (error) {
+      console.error('Failed to load pending grades', error);
       setError('Failed to load pending grades');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPendingGrades();
+  }, [loadPendingGrades]);
 
   const handleSelectGrade = (gradeId) => {
     setSelectedGrades(prev => 

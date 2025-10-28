@@ -1,6 +1,5 @@
 // frontend/src/pages/student/GradesPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Table from '../../components/common/Table';
@@ -9,43 +8,40 @@ import { BookOpen, Award, AlertCircle, TrendingUp } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const GradesPage = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [enrollments, setEnrollments] = useState([]);
   const [gpa, setGpa] = useState(0);
   const [incSubjects, setIncSubjects] = useState([]);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadGradesData();
+  const getNumericGrade = useCallback((gradeValue) => {
+    const gradeMap = {
+      'grade_1_0': 1.0,
+      'grade_1_25': 1.25,
+      'grade_1_5': 1.5,
+      'grade_1_75': 1.75,
+      'grade_2_0': 2.0,
+      'grade_2_25': 2.25,
+      'grade_2_5': 2.5,
+      'grade_2_75': 2.75,
+      'grade_3_0': 3.0,
+      'grade_4_0': 4.0,
+      'grade_5_0': 5.0
+    };
+    return gradeMap[gradeValue] || null;
   }, []);
 
-  const loadGradesData = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.get('/enrollments/history');
-      setEnrollments(response.data.data);
-      
-      // Calculate GPA and INC subjects
-      calculateGPA(response.data.data);
-    } catch (error) {
-      setError('Failed to load grades data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateGPA = (enrollments) => {
+  const calculateGPA = useCallback((enrollmentData) => {
     let totalPoints = 0;
     let totalUnits = 0;
     const incList = [];
 
-    enrollments.forEach(enrollment => {
+    enrollmentData.forEach(enrollment => {
       enrollment.enrollmentSubjects.forEach(enrollmentSubject => {
         if (enrollmentSubject.grade) {
           const units = enrollmentSubject.units;
           const gradeValue = enrollmentSubject.grade.gradeValue;
-          
+
           if (gradeValue === 'INC') {
             incList.push({
               subject: enrollmentSubject.subject.name,
@@ -66,24 +62,27 @@ const GradesPage = () => {
     const calculatedGPA = totalUnits > 0 ? (totalPoints / totalUnits).toFixed(2) : 0;
     setGpa(calculatedGPA);
     setIncSubjects(incList);
-  };
+  }, [getNumericGrade]);
 
-  const getNumericGrade = (gradeValue) => {
-    const gradeMap = {
-      'grade_1_0': 1.0,
-      'grade_1_25': 1.25,
-      'grade_1_5': 1.5,
-      'grade_1_75': 1.75,
-      'grade_2_0': 2.0,
-      'grade_2_25': 2.25,
-      'grade_2_5': 2.5,
-      'grade_2_75': 2.75,
-      'grade_3_0': 3.0,
-      'grade_4_0': 4.0,
-      'grade_5_0': 5.0
-    };
-    return gradeMap[gradeValue] || null;
-  };
+  const loadGradesData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.get('/enrollments/history');
+      setEnrollments(response.data.data);
+
+      // Calculate GPA and INC subjects
+      calculateGPA(response.data.data);
+    } catch (error) {
+      console.error('Failed to load grades data', error);
+      setError('Failed to load grades data');
+    } finally {
+      setLoading(false);
+    }
+  }, [calculateGPA]);
+
+  useEffect(() => {
+    loadGradesData();
+  }, [loadGradesData]);
 
   const formatGrade = (gradeValue) => {
     if (!gradeValue) return 'No Grade';

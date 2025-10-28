@@ -42,7 +42,7 @@ const SectionsPage = () => {
       const response = await apiService.get('/subjects');
       setSubjects(response.data.data);
     } catch (error) {
-      console.error('Failed to fetch subjects');
+      console.error('Failed to fetch subjects', error);
     }
   };
 
@@ -73,6 +73,7 @@ const SectionsPage = () => {
       const response = await apiService.get('/sections');
       setSections(response.data.data);
     } catch (error) {
+      console.error('Failed to fetch sections', error);
       setAlert({
         type: 'error',
         message: 'Failed to fetch sections'

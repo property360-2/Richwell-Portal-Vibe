@@ -1,6 +1,5 @@
 // frontend/src/pages/professor/GradeEntryPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -11,7 +10,6 @@ import { Users, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const GradeEntryPage = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
@@ -36,21 +34,22 @@ const GradeEntryPage = () => {
     { value: 'DRP', label: 'DRP' }
   ];
 
-  useEffect(() => {
-    loadSections();
-  }, []);
-
-  const loadSections = async () => {
+  const loadSections = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/grades/sections');
       setSections(response.data.data.sections);
     } catch (error) {
+      console.error('Failed to load sections', error);
       setError('Failed to load sections');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSections();
+  }, [loadSections]);
 
   const handleSectionSelect = (section) => {
     setSelectedSection(section);
