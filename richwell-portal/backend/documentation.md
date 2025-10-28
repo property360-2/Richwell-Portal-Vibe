@@ -681,6 +681,16 @@ node prisma/seed.js
 - ✅ Reject duplicate enrollment
 - ✅ Return enrollment history
 
+### Role-based Authorization Coverage
+
+| Role | Allowed coverage | Forbidden coverage |
+|------|------------------|--------------------|
+| **Student** | `/api/analytics/student` with profile checks; read-only catalog access (`/api/programs`, `/api/sections`). | Analytics dashboards for other roles; catalog mutations (program/section create, update, delete); grade workflows. |
+| **Professor** | `/api/analytics/professor`; grade entry routes (`/api/grades/sections`, `/api/grades/:id`); read-only catalog access. | Student/registrar/dean analytics; registrar grade approvals; program/section mutations reserved for registrar/dean. |
+| **Registrar** | `/api/analytics/registrar` and `/api/analytics/admission`; program/section create & update; grade approval suite (`/api/grades/pending-approval`, `/api/grades/:id/approve`, `/api/grades/bulk-approve`). | Student/professor analytics; catalog deletions reserved for dean. |
+| **Dean** | `/api/analytics/dean` and `/api/analytics/admission`; full program/section management including deletions. | Professor grade entry endpoints; student/registrar analytics routes not assigned to dean. |
+| **Admission** | `/api/analytics/admission` shared analytics dashboard. | Student/professor/registrar/dean analytics routes. |
+
 **Run Tests:**
 ```bash
 npm test

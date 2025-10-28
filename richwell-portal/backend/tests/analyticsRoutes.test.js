@@ -29,8 +29,7 @@ describe('Analytics Routes Authorization', () => {
     const professorRole = await prisma.role.create({ data: { name: 'professor' } });
     const registrarRole = await prisma.role.create({ data: { name: 'registrar' } });
     const deanRole = await prisma.role.create({ data: { name: 'dean' } });
-
-    await prisma.role.create({ data: { name: 'admission' } });
+    const admissionRole = await prisma.role.create({ data: { name: 'admission' } });
 
     const program = await prisma.program.create({
       data: {
@@ -97,6 +96,9 @@ describe('Analytics Routes Authorization', () => {
 
     await createUser('dean@example.com', deanRole.id);
     await loginAndStore('dean', 'dean@example.com');
+
+    await createUser('admission@example.com', admissionRole.id);
+    await loginAndStore('admission', 'admission@example.com');
   });
 
   afterAll(async () => {
@@ -123,14 +125,16 @@ describe('Analytics Routes Authorization', () => {
       expect(response.body.message).toBe('Access denied. Student profile required.');
     });
 
-    it('denies non-students', async () => {
-      const response = await request(app)
-        .get('/api/analytics/student')
-        .set('Authorization', `Bearer ${tokens.professor}`);
+    ['professor', 'registrar', 'dean', 'admission'].forEach((role) => {
+      it(`denies ${role} users`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/student')
+          .set('Authorization', `Bearer ${tokens[role]}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
@@ -154,14 +158,16 @@ describe('Analytics Routes Authorization', () => {
       expect(response.body.message).toBe('Access denied. Professor profile required.');
     });
 
-    it('denies non-professors', async () => {
-      const response = await request(app)
-        .get('/api/analytics/professor')
-        .set('Authorization', `Bearer ${tokens.student}`);
+    ['student', 'registrar', 'dean', 'admission'].forEach((role) => {
+      it(`denies ${role} users`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/professor')
+          .set('Authorization', `Bearer ${tokens[role]}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
@@ -175,14 +181,16 @@ describe('Analytics Routes Authorization', () => {
       expect(response.body.status).toBe('success');
     });
 
-    it('denies non-registrars', async () => {
-      const response = await request(app)
-        .get('/api/analytics/registrar')
-        .set('Authorization', `Bearer ${tokens.student}`);
+    ['student', 'professor', 'dean', 'admission'].forEach((role) => {
+      it(`denies ${role} users`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/registrar')
+          .set('Authorization', `Bearer ${tokens[role]}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 
@@ -196,14 +204,41 @@ describe('Analytics Routes Authorization', () => {
       expect(response.body.status).toBe('success');
     });
 
-    it('denies non-deans', async () => {
-      const response = await request(app)
-        .get('/api/analytics/dean')
-        .set('Authorization', `Bearer ${tokens.registrar}`);
+    ['student', 'professor', 'registrar', 'admission'].forEach((role) => {
+      it(`denies ${role} users`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/dean')
+          .set('Authorization', `Bearer ${tokens[role]}`);
 
-      expect(response.status).toBe(403);
-      expect(response.body.status).toBe('error');
-      expect(response.body.message).toContain('Access denied');
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
+    });
+  });
+
+  describe('Admission analytics', () => {
+    ['admission', 'registrar', 'dean'].forEach((role) => {
+      it(`allows ${role} users to access admission analytics`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/admission')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('success');
+      });
+    });
+
+    ['student', 'professor'].forEach((role) => {
+      it(`denies ${role} users`, async () => {
+        const response = await request(app)
+          .get('/api/analytics/admission')
+          .set('Authorization', `Bearer ${tokens[role]}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.status).toBe('error');
+        expect(response.body.message).toContain('Access denied');
+      });
     });
   });
 });
