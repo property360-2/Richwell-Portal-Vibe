@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { recordEnrollmentStatusLog } from '../utils/analytics.js';
 import { invalidateAnalyticsCacheForTerm } from '../utils/cache.js';
+import { logger } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
 
@@ -202,7 +203,7 @@ export const getAvailableSubjects = async (req, res) => {
       data: responsePayload
     });
   } catch (error) {
-    console.error('Get available subjects error:', error);
+    (req?.log || logger).error('Get available subjects error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get available subjects'
@@ -278,7 +279,7 @@ export const getRecommendedSubjects = async (req, res) => {
       data: recommendedSubjects
     });
   } catch (error) {
-    console.error('Get recommended subjects error:', error);
+    (req?.log || logger).error('Get recommended subjects error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get recommended subjects'
@@ -409,7 +410,7 @@ export const enrollStudent = async (req, res) => {
         }
       });
     } catch (logError) {
-      console.error('Failed to record enrollment analytics log:', logError);
+      (req?.log || logger).error('Failed to record enrollment analytics log:', { error: logError });
     }
 
     try {
@@ -428,7 +429,7 @@ export const enrollStudent = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Enroll student error:', error);
+    (req?.log || logger).error('Enroll student error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to enroll student'
@@ -478,7 +479,7 @@ export const getEnrollmentHistory = async (req, res) => {
       data: enrollments
     });
   } catch (error) {
-    console.error('Get enrollment history error:', error);
+    (req?.log || logger).error('Get enrollment history error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get enrollment history'
@@ -548,7 +549,7 @@ export const cancelEnrollment = async (req, res) => {
         }
       });
     } catch (logError) {
-      console.error('Failed to record cancellation analytics log:', logError);
+      (req?.log || logger).error('Failed to record cancellation analytics log:', { error: logError });
     }
 
     try {
@@ -562,7 +563,7 @@ export const cancelEnrollment = async (req, res) => {
       message: 'Enrollment cancelled successfully'
     });
   } catch (error) {
-    console.error('Cancel enrollment error:', error);
+    (req?.log || logger).error('Cancel enrollment error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to cancel enrollment'
@@ -637,7 +638,7 @@ export const updateEnrollmentStatus = async (req, res) => {
         }
       });
     } catch (logError) {
-      console.error('Failed to record enrollment status analytics log:', logError);
+      (req?.log || logger).error('Failed to record enrollment status analytics log:', { error: logError });
     }
 
     try {
@@ -655,7 +656,7 @@ export const updateEnrollmentStatus = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update enrollment status error:', error);
+    (req?.log || logger).error('Update enrollment status error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to update enrollment status'
