@@ -1,6 +1,5 @@
 // frontend/src/pages/professor/IncResolutionPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -11,7 +10,6 @@ import { AlertCircle, User, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const IncResolutionPage = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [resolutions, setResolutions] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -36,21 +34,22 @@ const IncResolutionPage = () => {
     { value: 'grade_5_0', label: '5.0' }
   ];
 
-  useEffect(() => {
-    loadResolutions();
-  }, []);
-
-  const loadResolutions = async () => {
+  const loadResolutions = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/inc-resolutions/professor');
       setResolutions(response.data.data);
     } catch (error) {
+      console.error('Failed to load INC resolutions', error);
       setError('Failed to load INC resolutions');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadResolutions();
+  }, [loadResolutions]);
 
   const handleCreateResolution = async () => {
     try {
