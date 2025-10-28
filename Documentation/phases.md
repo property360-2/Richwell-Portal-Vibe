@@ -132,21 +132,21 @@
 
 **Goal:** Role-based data visualization.
 
-**Status:** Admission analytics endpoint and dashboard connected.
+**Status:** Primary analytics services delivered; backlog captured below.
 
-1. Backend APIs for summaries per role.
-2. Frontend reusable components:
+### ✅ Completed in the latest milestone
 
-   * **Chart** (Recharts / Chart.js)
-   * **DashboardCard**
-3. Dashboards:
+1. **Role-driven analytics APIs** finalized for all user types with authorization guards and Prisma aggregations. Registrar, dean, and admission dashboards are now cached per active term to reduce repeated load on enrollment/grade tables.【F:richwell-portal/backend/src/routes/analyticsRoutes.js†L4-L22】【F:richwell-portal/backend/src/controllers/analyticsController.js†L239-L330】【F:richwell-portal/backend/src/controllers/analyticsController.js†L332-L465】
+2. **Admissions intelligence** exposes day-level trends, confirmation metrics, program distribution, and the latest enrollment activity, refreshed automatically after each status transition.【F:richwell-portal/backend/src/controllers/analyticsController.js†L467-L640】【F:richwell-portal/backend/src/controllers/enrollmentController.js†L409-L559】
+3. **Professor and student dashboards** compute GPA, INC/fail counts, section rosters, and grade distributions with shared helpers so key academic markers render consistently in the UI.【F:richwell-portal/backend/src/controllers/analyticsController.js†L9-L238】【F:richwell-portal/frontend/src/pages/dashboards/ProfessorDashboard.jsx†L1-L200】
+4. **Regression coverage** expanded via analytics smoke tests (backend) and Playwright dashboard fixtures (frontend) to keep chart payloads in sync during CI.【F:richwell-portal/backend/package.json†L10-L18】【F:richwell-portal/backend/scripts/analyticsSmoke.js†L30-L222】【F:richwell-portal/frontend/tests/e2e/dashboard.spec.ts†L1-L332】
+5. **Cache invalidation hooks** fire after enrollment confirmations/cancellations so admission widgets immediately reflect pipeline changes.【F:richwell-portal/backend/src/controllers/enrollmentController.js†L403-L559】
 
-   * Students → GPA + INCs
-   * Professors → class averages + INCs
-   * Registrar → enrollment stats + pending approvals
-   * Admission → applicant trends
-   * Dean → professor load + course performance
-4. Ensure dashboards are **elderly-friendly**, mobile responsive.
+### ⏳ Outstanding follow-ups
+
+- Extend caching helpers to student and professor analytics to reduce repeated GPA calculations during heavy usage.【F:richwell-portal/backend/src/controllers/analyticsController.js†L9-L238】
+- Implement automated smoke probes for each analytics endpoint post-deploy (currently manual run via `npm run analytics:smoke`).【F:richwell-portal/backend/package.json†L10-L18】
+- Broaden analytics logging/monitoring to capture chart query performance in production-like environments.【F:Documentation/todo.md†L33-L34】
 
 ---
 
