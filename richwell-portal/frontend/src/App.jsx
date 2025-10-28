@@ -32,6 +32,8 @@ import SubjectsPage from './pages/admin/SubjectsPage';
 import SectionsPage from './pages/admin/SectionsPage';
 import AcademicTermsPage from './pages/admin/AcademicTermsPage';
 import StudentOnboardingPage from './pages/admission/StudentOnboardingPage';
+import ApplicantsPage from './pages/admission/ApplicantsPage';
+import AdmissionAnalyticsPage from './pages/admission/AdmissionAnalyticsPage';
 
 function App() {
   return (
@@ -146,10 +148,26 @@ function App() {
             }
           />
           <Route
+            path="/admission/applicants"
+            element={
+              <ProtectedRoute allowedRoles={['admission']}>
+                <ApplicantsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admission/onboarding"
             element={
               <ProtectedRoute allowedRoles={['admission', 'registrar']}>
                 <StudentOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admission/analytics"
+            element={
+              <ProtectedRoute allowedRoles={['admission']}>
+                <AdmissionAnalyticsPage />
               </ProtectedRoute>
             }
           />

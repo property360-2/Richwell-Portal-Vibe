@@ -1,5 +1,5 @@
 // frontend/src/pages/student/EnrollmentPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
@@ -22,11 +22,7 @@ const EnrollmentPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  useEffect(() => {
-    loadEnrollmentData();
-  }, []);
-
-  const loadEnrollmentData = async () => {
+  const loadEnrollmentData = useCallback(async () => {
     try {
       setLoading(true);
       const [availableRes, recommendedRes] = await Promise.all([
@@ -37,11 +33,16 @@ const EnrollmentPage = () => {
       setAvailableSubjects(availableRes.data.data.subjects);
       setRecommendedSubjects(recommendedRes.data.data);
     } catch (error) {
+      console.error('Failed to load enrollment data', error);
       setError('Failed to load enrollment data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadEnrollmentData();
+  }, [loadEnrollmentData]);
 
   const handleSubjectToggle = (subject, section) => {
     const subjectKey = `${subject.id}-${section.id}`;
