@@ -1,6 +1,5 @@
 // frontend/src/pages/student/IncResolutionPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Alert from '../../components/common/Alert';
@@ -8,28 +7,28 @@ import { AlertCircle, Clock, CheckCircle, User, BookOpen } from 'lucide-react';
 import { apiService } from '../../utils/api';
 
 const IncResolutionPage = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [incSubjects, setIncSubjects] = useState([]);
   const [existingResolutions, setExistingResolutions] = useState([]);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadIncSubjects();
-  }, []);
-
-  const loadIncSubjects = async () => {
+  const loadIncSubjects = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/inc-resolutions/student');
       setIncSubjects(response.data.data.incSubjects);
       setExistingResolutions(response.data.data.existingResolutions);
     } catch (error) {
+      console.error('Failed to load INC subjects', error);
       setError('Failed to load INC subjects');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadIncSubjects();
+  }, [loadIncSubjects]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

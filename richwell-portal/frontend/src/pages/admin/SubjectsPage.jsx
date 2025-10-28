@@ -1,5 +1,5 @@
 // frontend/src/pages/admin/SubjectsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -33,33 +33,23 @@ const SubjectsPage = () => {
     prerequisiteId: ''
   });
 
-  useEffect(() => {
-    fetchPrograms();
-    fetchSubjects();
-  }, []);
-
-  useEffect(() => {
-    fetchSubjects();
-  }, [filterProgram]);
-
-  const fetchPrograms = async () => {
+  const fetchPrograms = useCallback(async () => {
     try {
       const response = await apiService.get('/programs');
       setPrograms(response.data.data);
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
-      console.error('Failed to fetch programs');
+      console.error('Failed to fetch programs', error);
     }
-  };
+  }, []);
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
       const url = filterProgram ? `/subjects?programId=${filterProgram}` : '/subjects';
       const response = await apiService.get(url);
       setSubjects(response.data.data);
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
+      console.error('Failed to fetch subjects', error);
       setAlert({
         type: 'error',
         message: 'Failed to fetch subjects'
@@ -67,7 +57,15 @@ const SubjectsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterProgram]);
+
+  useEffect(() => {
+    fetchPrograms();
+  }, [fetchPrograms]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
 
   const handleChange = (e) => {
     setFormData({

@@ -1,5 +1,5 @@
 // frontend/src/pages/admin/ProgramsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -30,22 +30,22 @@ const ProgramsPage = () => {
   });
   const [formErrors, setFormErrors] = useState({});
 
-  useEffect(() => {
-    fetchPrograms();
-  }, []);
-
-  const fetchPrograms = async () => {
+  const fetchPrograms = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/programs');
       setPrograms(response.data.data);
-    // eslint-disable-next-line no-unused-vars
     } catch (err) {
+      console.error('Failed to fetch programs', err);
       showError('Failed to fetch programs');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    fetchPrograms();
+  }, [fetchPrograms]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
