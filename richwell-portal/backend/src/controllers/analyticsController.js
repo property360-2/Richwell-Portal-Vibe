@@ -1,6 +1,7 @@
 // backend/src/controllers/analyticsController.js
 import { PrismaClient } from '@prisma/client';
 import { getOrSetAnalyticsCache } from '../utils/cache.js';
+import { logger } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
 
@@ -103,7 +104,7 @@ export const getStudentAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get student analytics error:', error);
+    (req?.log || logger).error('Get student analytics error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get student analytics'
@@ -229,7 +230,7 @@ export const getProfessorAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get professor analytics error:', error);
+    (req?.log || logger).error('Get professor analytics error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get professor analytics'
@@ -359,7 +360,7 @@ export const getRegistrarAnalytics = async (req, res) => {
       data: registrarAnalytics
     });
   } catch (error) {
-    console.error('Get registrar analytics error:', error);
+    (req?.log || logger).error('Get registrar analytics error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get registrar analytics'
@@ -473,7 +474,7 @@ export const getDeanAnalytics = async (req, res) => {
       data: deanAnalytics
     });
   } catch (error) {
-    console.error('Get dean analytics error:', error);
+    (req?.log || logger).error('Get dean analytics error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get dean analytics'
@@ -731,7 +732,7 @@ export const getAdmissionAnalytics = async (req, res) => {
       data: admissionAnalytics
     });
   } catch (error) {
-    console.error('Get admission analytics error:', error);
+    (req?.log || logger).error('Get admission analytics error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get admission analytics'

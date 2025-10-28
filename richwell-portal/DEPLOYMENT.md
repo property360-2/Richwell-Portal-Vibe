@@ -205,6 +205,28 @@ Run a lightweight verification suite against the deployed backend immediately af
        ANALYTICS_ADMISSION_PASSWORD: ${{ secrets.ANALYTICS_ADMISSION_PASSWORD }}
    ```
 
+## 📈 Logging & Monitoring
+
+The backend now emits structured JSON logs with Winston, including severity levels and a `requestId` for each HTTP transaction. Use the following guidance to keep observability consistent across environments:
+
+### Log Levels & Retention
+
+- `LOG_LEVEL` controls verbosity (`error`, `warn`, `info`, etc.).
+- Default `info` level is recommended for production and staging; raise to `debug` only temporarily when troubleshooting.
+- Retain raw logs for at least 14 days in staging and 30 days in production to support incident reviews.
+
+### Shipping Logs
+
+- **Staging**: Forward application logs to a centralized aggregator (e.g., Elastic Stack, Datadog, or Loki) using a lightweight forwarder such as Fluent Bit or the platform's native log drain.
+- **Production**: Integrate with your APM/logging platform (New Relic, Datadog, Elastic, etc.) so that Winston's JSON payloads are parsed and indexed. Ensure the `requestId` field is preserved to correlate API calls, background jobs, and downstream service metrics.
+- Configure alerts/dashboards that surface spikes in `error`-level events and track request latency using the `Completed request` log entries.
+
+### Monitoring Expectations
+
+- Connect logs with existing APM traces using the shared `requestId`. If an APM agent is already in use, enrich outgoing traces with the same identifier.
+- During deployments, watch log streams in both staging and production to verify that new code paths emit `info` logs and that no unexpected `error` events appear.
+- Document any new log fields or conventions in team runbooks to keep parsing rules up to date.
+
 The script authenticates each role, hits the `/api/analytics/*` endpoints, and validates the response structure so regressions are detected within the pipeline.
 
 ## 🐳 Docker Deployment

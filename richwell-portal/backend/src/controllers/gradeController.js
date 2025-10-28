@@ -1,6 +1,7 @@
 // backend/src/controllers/gradeController.js
 import { PrismaClient } from '@prisma/client';
 import { invalidateAnalyticsCacheForTerm } from '../utils/cache.js';
+import { logger } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
 
@@ -65,7 +66,7 @@ export const getProfessorSections = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get professor sections error:', error);
+    (req?.log || logger).error('Get professor sections error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get professor sections'
@@ -176,7 +177,7 @@ export const updateGrade = async (req, res) => {
       data: grade
     });
   } catch (error) {
-    console.error('Update grade error:', error);
+    (req?.log || logger).error('Update grade error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to update grade'
@@ -256,7 +257,7 @@ export const getPendingGrades = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get pending grades error:', error);
+    (req?.log || logger).error('Get pending grades error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to get pending grades'
@@ -310,7 +311,7 @@ export const approveGrade = async (req, res) => {
       data: updatedGrade
     });
   } catch (error) {
-    console.error('Approve grade error:', error);
+    (req?.log || logger).error('Approve grade error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to approve grade'
@@ -365,7 +366,7 @@ export const bulkApproveGrades = async (req, res) => {
       message: `${result.count} grades approved successfully`
     });
   } catch (error) {
-    console.error('Bulk approve grades error:', error);
+    (req?.log || logger).error('Bulk approve grades error:', { error });
     res.status(500).json({
       status: 'error',
       message: 'Failed to approve grades'
@@ -424,7 +425,7 @@ const updateStudentGPA = async (studentId) => {
       }
     });
   } catch (error) {
-    console.error('Update student GPA error:', error);
+    logger.error('Update student GPA error:', { error, studentId });
   }
 };
 
