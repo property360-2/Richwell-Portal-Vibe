@@ -92,6 +92,14 @@ export const apiService = {
 
   // Admission endpoints
   onboardStudent: (data) => api.post('/admissions/students', data),
+  getAdmissionApplicants: (params = {}) => api.get('/admissions/applicants', { params }),
+  updateAdmissionApplicantStatus: (id, data) => api.patch(`/admissions/applicants/${id}`, data),
+
+  // Admission analytics endpoints
+  getAdmissionAnalyticsOverview: () => api.get('/analytics/admission/overview'),
+  getAdmissionPipelineAnalytics: () => api.get('/analytics/admission/pipeline'),
+  getAdmissionEngagementAnalytics: () => api.get('/analytics/admission/engagement'),
+  getAdmissionDemographicsAnalytics: () => api.get('/analytics/admission/demographics'),
 
   // Academic Terms endpoints (Phase 3)
   getAcademicTerms: () => api.get('/academic-terms'),
