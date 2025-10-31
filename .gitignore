@@ -1,0 +1,26 @@
+# Node & workspace
+node_modules/
+npm-debug.log*
+
+# Build output
+dist/
+build/
+.turbo/
+.parcel-cache/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+*.pid
+*.seed
+
+# Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
