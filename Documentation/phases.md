@@ -1,205 +1,299 @@
-# **School Portal Development Phases (Full, Local Hosting Version)**
+# 🧭 Richwell College Portal – Development Phases (v2.0)
+> Official project roadmap for system implementation based on Concept Plan v2.0.
 
 ---
 
-## **Phase 0: Planning & Requirements Gathering** Done
+## ⚙️ Development Overview
 
-**Goal:** Define system scope and rules before coding.
-
-1. Meet with stakeholders: Registrar, Dean, Admission, Professors, Students.
-2. Create **user stories per role**:
-
-   * **Students:** enroll, view grades, GPA, INC tracking.
-   * **Professors:** encode grades, view sections, manage INCs.
-   * **Registrar:** create sections, approve grades, enrollment analytics.
-   * **Admission:** handle enrollment workflow.
-   * **Dean:** assign professors, monitor academic performance.
-3. Define **system rules**:
-
-   * Max 30 units per semester
-   * INC restrictions and year standing rules
-   * Repeat logic (major/minor)
-   * Prerequisite checks
-4. Draft **ERD & database schema** (core + optional tables).
-5. Identify **pre-built reusable components**:
-
-   * Buttons, modals, tables, dropdowns, alerts, cards, charts.
+The project will be built modularly to ensure stability, scalability, and ease of maintenance.  
+Each phase represents a milestone layer — from foundation setup to full academic automation.  
 
 ---
 
-## **Phase 1: Local Development Setup** 
+# 🏗️ Phase 1: Database & Core Backend Setup
 
-**Goal:** Prepare dev environment and project structure.
+### 🎯 Objective
+Establish the foundation for data integrity and backend communication using Prisma ORM and Express/NestJS.
 
-1. Initialize **Node.js + Express** backend project.
-2. Initialize **React + Tailwind** frontend project.
-3. Install **ORM** (Prisma or TypeORM) for DB connection.
-4. Install **Postman** for API testing.
-5. Set up **local MySQL/MariaDB** database.
-6. Create **reusable component folder** in React:
+### 🧱 Key Tasks
+1. **Database Initialization**
+   - Create all tables defined in Schema v2.0.
+   - Add constraints, relationships, and indexes.
+   - Ensure cascade rules and foreign key integrity.
 
-   ```
-   /components
-     Button.jsx
-     Modal.jsx
-     Table.jsx
-     InputField.jsx
-     Dropdown.jsx
-     Chart.jsx
-     DashboardCard.jsx
-   ```
-7. Configure **environment variables** (`.env`) for DB connection and auth.
+2. **Prisma Setup**
+   - Initialize `prisma/schema.prisma`.
+   - Define all models with enums and JSON fields.
+   - Generate migrations:
+     ```bash
+     npx prisma migrate dev --name init
+     ```
 
----
+3. **Seed Data**
+   - Create default roles:
+     - Dean, Registrar, Admission, Professor
+   - Create sample course, subjects, and a sample term.
 
-## **Phase 2: Authentication & Role Management**
+4. **Global Middleware**
+   - Input validation (Zod or Joi).
+   - Global error handler.
+   - Response wrapper (status + message + payload).
+   - Logger (winston/pino).
 
-**Goal:** Secure login with role-based access.
+5. **Audit Trail Middleware**
+   - Intercept every `POST/PUT/PATCH/ARCHIVE`.
+   - Store actor, action, and delta (old/new value).
 
-1. Backend: implement **login/logout, session management**, JWT optional.
-2. Frontend: use reusable **LoginForm**, **InputField**, **Alert** components.
-3. Role-based middleware:
+6. **Testing**
+   - Verify schema joins and cascading.
+   - Test audit trail inserts per table.
 
-   * Students → dashboard & enrollment
-   * Professors → grade entry + sections
-   * Registrar → enrollment approvals
-   * Admission → enrollment workflow
-   * Dean → assignments & analytics
-4. Password hashing & reset flows.
-5. Test login for all roles locally.
-
----
-
-## **Phase 3: Academic Data Management**
-
-**Goal:** Manage programs, subjects, sections, and terms.
-
-1. **Programs CRUD** → use Table, Modal, Button components.
-2. **Subjects CRUD** → manage `year_standing` (nullable), prerequisites.
-3. **Sections CRUD** → assign professors, max slots, schedule.
-4. **Academic Terms CRUD** → create active semester/year.
-5. Test all CRUD operations on local server.
+### ✅ Deliverables
+- Working database + Prisma migration.
+- Connected backend API with CRUD for each major entity.
+- Basic audit trail auto-logging.
+- Documentation for all Prisma models.
 
 ---
 
-## **Phase 4: Enrollment System**
+# 🔐 Phase 2: Authentication & Role-Based Access Control (RBAC)
 
-**Goal:** Build full student enrollment workflow.
+### 🎯 Objective
+Implement secure login and role isolation across the system.
 
-1. Registrar creates sections.
-2. Admission opens enrollment form.
-3. Student enrollment workflow:
+### 🔑 Key Tasks
+1. **JWT Authentication**
+   - Login route for `users` and `students`.
+   - Token-based session validation.
+   - Refresh token setup (optional).
 
-   * Recommended subjects per semester
-   * Add/drop subjects (≤30 units)
-   * Validate prerequisites, year standing, INCs
-   * Validate section slot availability
-   * Summary modal → oath modal → confirm
-   * Auto-generate student ID & password for new students
-4. Save enrollment data to `enrollments` and `enrollment_subjects`.
-5. Update **admission dashboard analytics**.
-6. Test workflows locally:
+2. **RBAC Middleware**
+   - Restrict endpoints by role:
+     ```ts
+     if (user.role !== 'dean') return 403;
+     ```
 
-   * Regular vs irregular students
-   * INC blocking
-   * Max units enforcement
-   * Section slot limits
+3. **Password Handling**
+   - Hash passwords via bcrypt.
+   - Default password generation for new accounts.
 
----
+4. **User Management**
+   - CRUD for `users` (Dean only).
+   - Role assignment restrictions.
 
-## **Phase 5: Grades Management**
+5. **Session Timeout / Localhost Limitation**
+   - Admission portal limited to local IP range.
+   - Auto logout after inactivity.
 
-**Goal:** Enter, approve, and view grades with INC & repeat logic.
+6. **Testing**
+   - Validate JWT across all endpoints.
+   - Ensure unauthorized roles can’t access others’ data.
 
-1. Professors enter grades using **GradeTable** (dropdown only).
-2. Students view grades (current & past) + GPA summary.
-3. INC resolution workflow:
-
-   * Students see INCs
-   * Professors enter resolved grade
-   * Registrar approves after completion form
-4. Repeat logic:
-
-   * Major → repeat after 6 months
-   * Minor → repeat after 1 year
-5. Validate all grades → only valid dropdown values.
-6. Test complete workflow locally.
+### ✅ Deliverables
+- Authenticated routes for all user types.
+- Protected REST API per role.
+- Token-based login flow for both `users` and `students`.
 
 ---
 
-## **Phase 6: Analytics & Dashboard**
+# 🧾 Phase 3: Enrollment, Advising & Academic Core
 
-**Goal:** Role-based data visualization.
+### 🎯 Objective
+Build the functional academic workflow — enrollment, subject validation, and section control.
 
-1. Backend APIs for summaries per role.
-2. Frontend reusable components:
+### 🧱 Key Modules
 
-   * **Chart** (Recharts / Chart.js)
-   * **DashboardCard**
-3. Dashboards:
+#### 🏛️ Admission Module
+- Localhost-only access (Kiosk Mode).
+- Enrollment form:
+  - New Student
+  - Current Student
+  - Transferee
+- Auto-generate accounts after confirmation.
+- Section selection with slot decrement.
+- Auto-validate subject eligibility and unit cap (≤30 units).
 
-   * Students → GPA + INCs
-   * Professors → class averages + INCs
-   * Registrar → enrollment stats + pending approvals
-   * Admission → applicant trends
-   * Dean → professor load + course performance
-4. Ensure dashboards are **elderly-friendly**, mobile responsive.
+#### 📚 Registrar Module
+- Transferee subject mapping.
+- INC confirmation workflow.
+- Manual assignment for irregular students (nullable `section_id`).
+- Student archiving (e.g., dropped, graduated).
 
----
+#### 🧑‍🏫 Professor Module
+- View assigned sections.
+- Encode grades.
+- Resolve INC (based on policy).
+- View and search student list per term.
 
-## **Phase 7: Frontend UI/UX**
+#### 🏛️ Dean Module
+- Section management:
+  - Create / Edit / Archive / Restore.
+- Subject management:
+  - Add / Edit / Archive subjects.
+  - Assign prerequisites.
+- Faculty assignment (link subjects → professors).
+- Course management (add/edit).
 
-**Goal:** Create consistent, reusable, user-friendly interface.
-
-1. Use pre-built **Button, Modal, Table, InputField, Dropdown, Card** components.
-2. Ensure **consistent color scheme, spacing, typography** (Tailwind).
-3. Implement **form validation**, warnings for rules (INC, max units).
-4. Test UI on multiple devices over local Wi-Fi.
-
----
-
-## **Phase 8: Validation & Testing**
-
-**Goal:** Ensure system correctness.
-
-1. Unit tests → backend functions (enrollment, grades, repeat rules).
-2. Integration tests → full workflow: enrollment → grades → INC → repeat.
-3. Frontend tests → reusable components (forms, tables, modals).
-4. Edge case tests:
-
-   * INC blocking for year-standing subjects
-   * Max 30 units per semester
-   * Section slot limits
-   * Repeat eligibility dates
-
----
-
-## **Phase 9: Local Deployment**
-
-**Goal:** Make portal accessible over school Wi-Fi.
-
-1. Deploy Node.js + MySQL on **local school server/computer**.
-2. Serve React frontend via Node.js or static files.
-3. Configure **local IP** (e.g., `http://192.168.1.xxx:3000`) for Wi-Fi access.
-4. Set **static IP** to prevent IP changes.
-5. Test full system on multiple devices in the local network.
-6. Regular **database backup** on local storage.
+#### 👨‍🎓 Student Module
+- Dashboard (subjects, grades, INCs).
+- Year/Sem filter.
+- Account management (change password).
+- View-only access to records.
 
 ---
 
-## **Phase 10: Maintenance & Updates**
+### ⚙️ Functional Integrations
+- Audit trail auto-logs all CRUD/Archive actions.
+- INC deadline generator:
+  ```js
+  deadline = subject_type === "major" 
+    ? addMonths(12) 
+    : addMonths(6);
+````
 
-**Goal:** Keep the system stable and extendable.
+* Automated section slot decrement on enrollment.
 
-1. Monitor server logs for errors.
-2. Fix bugs and improve features.
-3. Update reusable components consistently.
-4. Daily/weekly database backups.
-5. Collect feedback for UI/UX improvements.
-6. Add optional modules later:
+---
 
-   * Notifications
-   * Advanced BI dashboards
-   * Scheduling system
+### ✅ Deliverables
+
+* Fully functional enrollment + subject advising system.
+* All user dashboards operational.
+* Stable backend APIs ready for frontend binding.
+* All archive actions functioning and logged.
+
+---
+
+# 📊 Phase 4: Analytics, Automation & Archiving
+
+### 🎯 Objective
+
+Introduce computed analytics, auto-archiving, and internal automation.
+
+### ⚙️ Analytics (Frontend-based)
+
+| Role      | Analytics                                           |
+| --------- | --------------------------------------------------- |
+| Dean      | Pass rates, faculty loads, INC trends               |
+| Registrar | INC resolution status, active vs. archived students |
+| Professor | Grade distribution, class performance               |
+| Student   | GPA trend, INC summary                              |
+
+### 🤖 Automation Add-ons
+
+1. **Auto-Archiver**
+
+   * Archives old terms, sections, and expired INCs automatically.
+   * Triggered via cron job or term switch.
+
+2. **Bulk Sectioning**
+
+   * Dean/Registrar assigns sections to multiple students.
+   * Backend logic handles slot updates + audit logging.
+
+3. **Auto Resectioning (Future Integration)**
+
+   * Automatically reassigns students if section slots exceed limit.
+
+4. **Forecasting (Optional Future AI Module)**
+
+   * Predicts subject demand per course using past enrollments.
+
+---
+
+### ✅ Deliverables
+
+* Analytics dashboards.
+* Auto-archive system (no deletion).
+* Bulk section assignment feature.
+* Fully logged automation events.
+
+---
+
+# 🧩 Phase 5: Final QA, Optimization & Deployment
+
+### 🎯 Objective
+
+Finalize testing, optimize queries, and deploy production-ready build.
+
+### 🧪 Quality Assurance Checklist
+
+1. **Data Integrity**
+
+   * Verify FKs, cascade rules, and archive logic.
+2. **Role Testing**
+
+   * Each role tested independently.
+   * Check RBAC for isolation and scope leaks.
+3. **Performance**
+
+   * Optimize slow queries.
+   * Index `student_id`, `subject_id`, `section_id` in joins.
+4. **Security**
+
+   * Sanitize input (prevent SQLi, XSS).
+   * Enforce HTTPS for production.
+5. **Error Logging**
+
+   * Centralized error collector (e.g., Winston logger).
+6. **Frontend QA**
+
+   * Responsive layout (Tailwind).
+   * Test kiosk flow for Admission.
+7. **Documentation**
+
+   * Update README and API references.
+
+---
+
+### 🧾 Deployment
+
+* **Backend:** Node/NestJS hosted (local + online support)
+* **Frontend:** React + Tailwind build
+* **DB:** MySQL / PostgreSQL
+* **Auth:** JWT with refresh token
+* **Future Extensions:**
+
+  * AI forecasting
+  * Automated resectioning
+  * Bulk operations
+  * Payment module integration (mock ready)
+
+---
+
+## 🧱 Final Phase Flow Summary
+
+| Phase | Focus                    | Outcome                       |
+| ----- | ------------------------ | ----------------------------- |
+| 1     | Database & Backend Setup | Working API + schema base     |
+| 2     | Auth & RBAC              | Secure access for all roles   |
+| 3     | Academic Core            | Enrollment, grading, advising |
+| 4     | Analytics & Automation   | Auto-archiving, data insights |
+| 5     | QA & Deployment          | Production-ready release      |
+
+---
+
+## 📦 Version Control
+
+* **Branching Strategy:**
+  `main` → stable releases
+  `dev` → feature integration
+  `feature/*` → per module (e.g., `feature/enrollment`)
+
+* **Commit Convention:**
+  `feat:` new feature
+  `fix:` bug fix
+  `refactor:` code structure
+  `docs:` documentation updates
+
+---
+
+## 🧠 Notes for Dev Team
+
+* Keep all `DELETE` routes disabled; only archive.
+* Always log `actor_id` for every action.
+* Use ENV-based configurations for roles and database.
+* Validate all user input before hitting the DB.
+* Modularize controllers for scalability (future automation-ready).
 
 ---
